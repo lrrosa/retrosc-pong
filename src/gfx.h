@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 RetroSC Pong contributors
+// Copyright (C) 2026 Leonardo Roman da Rosa
 #ifndef PONG_GFX_H
 #define PONG_GFX_H
 

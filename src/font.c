@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 RetroSC Pong contributors
+// Copyright (C) 2026 Leonardo Roman da Rosa
 // Fonte 5x7 simples, dominio publico. Cobertura: ASCII 0x20..0x5F (maiusculas).
 // Cada glifo: 7 bytes (1 por linha). Bits 7..3 sao usados (5 pixels), bits 2..0 = 0.
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright (C) 2026 RetroSC Pong contributors
+# Copyright (C) 2026 Leonardo Roman da Rosa
 # (origem: skill kicad-freerouting)
 """Ajusta um DSN exportado pelo KiCad antes do Freerouting.
 

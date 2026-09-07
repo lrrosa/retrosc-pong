@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright (C) 2026 RetroSC Pong contributors
+# Copyright (C) 2026 Leonardo Roman da Rosa
 """
 Simulador local do RetroSC Pong (RP2040).
 
@@ -206,11 +206,23 @@ class Phase:
         self.bonus_on = False
         self.bonus_wait = BONUS_WAIT_MIN + random.randrange(BONUS_WAIT_RANGE)
 
+    def _nave_dispara(self, lado):
+        # espelha nave_dispara() de phases.c
+        if len(self.shots) >= NAVE_SHOT_MAX:
+            return
+        self.shots.append({
+            "x": NAVE_X - SHOT_W if lado < 0 else NAVE_X + NAVE_W,
+            "y": self.nave_y + NAVE_H // 2 - SHOT_H // 2,
+            "vx": -SHOT_SPEED if lado < 0 else SHOT_SPEED,
+        })
+        self.nave_cool = NAVE_SHOT_PERIOD
+
     def nave_reset(self):
         # pode ficar no meio: a contagem regressiva tem fundo preto
         self.nave_y = (FB_H - NAVE_H) // 2
         self.nave_dir = 1
         self.nave_cool = NAVE_SHOT_PERIOD
+        self.nave_revide = 0
 
     def _barreira(self, cols, gap, blocos):
         step = BRICK_W + gap
@@ -380,6 +392,8 @@ class Phase:
         if self.cur == PHASE_NAVE:
             gx1, gy1 = NAVE_X + NAVE_W - 1, self.nave_y + NAVE_H - 1
             if not (x1 < NAVE_X or x0 > gx1 or y1 < self.nave_y or y0 > gy1):
+                # lado de onde a bola veio: reserva do revide (ver phases.c)
+                self.nave_revide = -1 if ball[2] > 0 else 1
                 novo, _ = self._bounce(NAVE_X, self.nave_y, gx1, gy1, ball)
                 return True, novo
         return False, ball
@@ -451,16 +465,18 @@ class Phase:
                 self.nave_y, self.nave_dir = FB_H - NAVE_H, -1
             if self.nave_y < 0:
                 self.nave_y, self.nave_dir = 0, 1
+            if self.nave_revide:
+                lado = self.nave_revide
+                if last_hitter == 0:
+                    lado = -1
+                elif last_hitter == 1:
+                    lado = 1
+                self.nave_revide = 0
+                self._nave_dispara(lado)
             self.nave_cool -= 1
             if self.nave_cool <= 0:
                 self.nave_cool = NAVE_SHOT_PERIOD
-                if len(self.shots) < NAVE_SHOT_MAX:
-                    esq = random.getrandbits(1)
-                    self.shots.append({
-                        "x": NAVE_X - SHOT_W if esq else NAVE_X + NAVE_W,
-                        "y": self.nave_y + NAVE_H // 2 - SHOT_H // 2,
-                        "vx": -SHOT_SPEED if esq else SHOT_SPEED,
-                    })
+                self._nave_dispara(-1 if random.getrandbits(1) else 1)
             vivos = []
             for s in self.shots:
                 s["x"] += s["vx"]

@@ -18,7 +18,9 @@ máquina arcade do evento [**RetroSC**](https://retrosc.org/).
   1. **PONG CLASSICO** — o pong de sempre;
   2. **TRIPLO** — a raquete vira 3 pedaços de 8 px com vãos entre eles;
   3. **NAVE** — uma nave sobe e desce no meio da quadra atirando: **a bola
-     rebate nela** e o tiro que pega uma raquete deixa ela pela metade por 5 s;
+     rebate nela** e o tiro que pega uma raquete deixa ela pela metade por 5 s.
+     Quem acerta a nave leva o troco: ela revida na hora, com um tiro pelo lado
+     de quem rebateu a bola;
   4. **BARREIRA I** — 2 muros de tijolos quebráveis no meio da tela;
   5. **PINBALL** — sete obstáculos fixos no meio da quadra: um losango com um
      poste solto acima e outro abaixo;

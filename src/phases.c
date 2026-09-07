@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 RetroSC Pong contributors
+// Copyright (C) 2026 Leonardo Roman da Rosa
 //
 // Fases do RetroSC Pong.
 //
@@ -65,6 +65,7 @@ static int      bonus_left;                      // passagens que ainda restam
 
 // nave + tiros (PHASE_NAVE)
 static int      nave_y, nave_dir, nave_cool;
+static int      nave_revide;    // revide pendente: -1 esquerda, +1 direita, 0 nenhum
 static struct { int x, y, vx; bool on; } shots[NAVE_SHOT_MAX];
 static int      shrink[2];                      // frames de raquete encolhida
 
@@ -256,9 +257,10 @@ static void bonus_sleep(void) {
 static void nave_reset(void) {
     // Pode nascer no meio da quadra: a contagem regressiva e desenhada com um
     // fundo preto e nao some mais atras dela.
-    nave_y    = (FB_HEIGHT - NAVE_H) / 2;
-    nave_dir  = +1;
-    nave_cool = NAVE_SHOT_PERIOD;
+    nave_y      = (FB_HEIGHT - NAVE_H) / 2;
+    nave_dir    = +1;
+    nave_cool   = NAVE_SHOT_PERIOD;
+    nave_revide = 0;
 }
 
 void phase_begin(int idx) {
@@ -479,11 +481,15 @@ bool phase_ball_collide(int32_t prev_x, int32_t prev_y,
         return true;
     }
 
-    // --- a propria nave rebate a bola ---
+    // --- a propria nave rebate a bola, e revida ---
     if (cur_phase == PHASE_NAVE) {
         int gx1 = NAVE_X + NAVE_W - 1;
         int gy1 = nave_y + NAVE_H - 1;
         if (!(x1 < NAVE_X || x0 > gx1 || y1 < nave_y || y0 > gy1)) {
+            // Quem dispara e update_nave(), que e quem recebe o ultimo a
+            // rebater. Aqui fica so o lado de onde a bola veio, usado como
+            // reserva enquanto ninguem tocou nela na jogada.
+            nave_revide = (*vx > 0) ? -1 : +1;
             bounce_off(NAVE_X, nave_y, gx1, gy1, bx, by, vx, vy);
             return true;
         }
@@ -550,25 +556,40 @@ static void update_coluna(void) {
     coluna_place();
 }
 
-static void update_nave(const int paddle_pos[2]) {
+// Solta um tiro pelo lado 'lado' (-1 esquerda, +1 direita) se houver vaga.
+// Reinicia o relogio do tiro periodico: o revide conta como o tiro da vez,
+// senao uma bola teimosa na nave viraria uma saraivada.
+static void nave_dispara(int lado) {
+    for (int i = 0; i < NAVE_SHOT_MAX; i++) {
+        if (shots[i].on) continue;
+        shots[i].on = true;
+        shots[i].y  = nave_y + NAVE_H / 2 - SHOT_H / 2;
+        shots[i].x  = (lado < 0) ? (NAVE_X - SHOT_W) : (NAVE_X + NAVE_W);
+        shots[i].vx = (lado < 0) ? -SHOT_SPEED : +SHOT_SPEED;
+        nave_cool   = NAVE_SHOT_PERIOD;
+        return;
+    }
+}
+
+static void update_nave(const int paddle_pos[2], int last_hitter) {
     nave_y += nave_dir * NAVE_SPEED;
     if (nave_y > FB_HEIGHT - NAVE_H) {
         nave_y = FB_HEIGHT - NAVE_H; nave_dir = -1;
     }
     if (nave_y < 0) { nave_y = 0; nave_dir = +1; }
 
+    // Levou bolada: devolve um tiro pelo lado de quem rebateu a bola.
+    if (nave_revide != 0) {
+        int lado = nave_revide;
+        if (last_hitter == 0)      lado = -1;
+        else if (last_hitter == 1) lado = +1;
+        nave_revide = 0;
+        nave_dispara(lado);
+    }
+    // Fora isso ela atira sozinha, para um lado sorteado.
     if (--nave_cool <= 0) {
         nave_cool = NAVE_SHOT_PERIOD;
-        for (int i = 0; i < NAVE_SHOT_MAX; i++) {
-            if (shots[i].on) continue;
-            bool para_esquerda = (get_rand_32() & 1) != 0;
-            shots[i].on = true;
-            shots[i].y  = nave_y + NAVE_H / 2 - SHOT_H / 2;
-            shots[i].x  = para_esquerda ? (NAVE_X - SHOT_W)
-                                        : (NAVE_X + NAVE_W);
-            shots[i].vx = para_esquerda ? -SHOT_SPEED : +SHOT_SPEED;
-            break;
-        }
+        nave_dispara((get_rand_32() & 1) ? -1 : +1);
     }
 
     rect_t seg[PADDLE_SEG_MAX];
@@ -600,7 +621,7 @@ void phase_update(int32_t ball_x, int32_t ball_y, const int paddle_pos[2],
 
     if (cur_flags & PF_TEM_BONUS) update_bonus(ball_x, ball_y, last_hitter, bonus);
     if (cur_phase == PHASE_COLUNA)   update_coluna();
-    if (cur_phase == PHASE_NAVE) update_nave(paddle_pos);
+    if (cur_phase == PHASE_NAVE) update_nave(paddle_pos, last_hitter);
 }
 
 // =============================================================

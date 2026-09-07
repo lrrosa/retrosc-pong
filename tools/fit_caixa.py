@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright (C) 2026 RetroSC Pong contributors
+# Copyright (C) 2026 Leonardo Roman da Rosa
 """
 Desenha a placa DENTRO da caixa Patola PB-085/3, em escala, para conferir
 encaixe: folgas, coincidencia dos furos com os bossos da tampa e por onde

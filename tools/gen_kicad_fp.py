@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright (C) 2026 RetroSC Pong contributors
+# Copyright (C) 2026 Leonardo Roman da Rosa
 """
 Gera os footprints que NAO existem nas bibliotecas do KiCad:
 o jack RCA de painel e o modulo amplificador PAM8403 (HW-012).

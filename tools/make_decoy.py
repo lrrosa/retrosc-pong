@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Copyright (C) 2026 RetroSC Pong contributors
+# Copyright (C) 2026 Leonardo Roman da Rosa
 """
 Cria a placa-ISCA para o Freerouting a partir da placa real e exporta o DSN.
 

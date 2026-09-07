@@ -132,7 +132,16 @@ is called once per vsync.
   in, not only at the instant of the serve (see the serve gotcha).
 - **live things** — `phase_update()` runs once per play frame and owns the bonus
   mascot, the ship, its shots, the moving column and the shrink timers; it returns
-  per-player `bonus[]` points (the mascot pays the last hitter). `frame_play()` adds those to
+  per-player `bonus[]` points (the mascot pays the last hitter). The ship also
+  **shoots back**: `phase_ball_collide()` cannot aim the reply because it never sees
+  `last_hitter`, so it leaves the side in `nave_revide` and `update_nave()` fires it
+  the same frame — `physics()` always runs before `phase_update()` in `frame_play()`,
+  and that order is what makes the reply land on the frame of the hit. A reply
+  restarts `nave_cool`, so it counts as the shot of the turn instead of stacking on
+  top of the periodic one (measured: it moved the phase from 8.9 to 9.1 s per point,
+  and the human paddle spends 8.1 % of the frames halved instead of 7.4 %). With the
+  four shot slots full the reply is simply dropped — 2.5 % of the hits in a rally
+  measured in the sim. `frame_play()` adds those to
   `total_score[]` **only** — a bonus never touches the phase score, so it cannot close
   a phase; it just flashes the total (`total_flash[]`).
 - **flags** — `phase_flags()` returns `PF_GRAVITY` / `PF_FLOOR_SCORES` /
