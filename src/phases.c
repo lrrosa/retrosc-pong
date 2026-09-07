@@ -373,8 +373,13 @@ int phase_serve_x(int dir) {
         // Volei: a bola cai na meia-quadra de quem vai sacar.
         return (dir < 0) ? (FB_WIDTH / 4) : (3 * FB_WIDTH / 4);
     }
-    if (cur_phase == PHASE_COLUNA || cur_phase == PHASE_PINBALL) {
-        // Sair do centro seria sair de dentro de um obstaculo.
+    if (cur_phase == PHASE_COLUNA || cur_phase == PHASE_PINBALL ||
+        cur_phase == PHASE_NAVE) {
+        // Sair do centro seria sair de dentro de um obstaculo: o poste do
+        // pinball, a coluna movel ou a nave, que volta ao meio da quadra a
+        // cada saque. Nascendo dentro dela, quem escolhia o lado era o
+        // primeiro quique -- em metade dos saques a bola saia na direcao de
+        // quem tinha feito o ponto (medido no simulador).
         return (dir < 0) ? (FB_WIDTH / 2 - 34) : (FB_WIDTH / 2 + 34);
     }
     return FB_WIDTH / 2;

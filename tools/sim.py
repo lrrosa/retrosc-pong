@@ -307,7 +307,9 @@ class Phase:
             return self.col_x[-1] + BRICK_W + 8
         if self.flags & PF_PADDLE_HORIZ:
             return FB_W // 4 if direction < 0 else 3 * FB_W // 4
-        if self.cur in (PHASE_COLUNA, PHASE_PINBALL):
+        if self.cur in (PHASE_COLUNA, PHASE_PINBALL, PHASE_NAVE):
+            # a nave volta ao meio a cada saque: sair do centro seria nascer
+            # dentro dela e deixar o primeiro quique escolher o lado
             return FB_W // 2 - 34 if direction < 0 else FB_W // 2 + 34
         return FB_W // 2
 

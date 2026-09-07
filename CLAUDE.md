@@ -128,7 +128,8 @@ is called once per vsync.
 - **serve** — `phase_serve_x()` / `phase_serve_y()`. `begin_phase(idx, scorer)` takes
   the previous phase's winner, so each phase opens with the ball heading to whoever
   lost the last one (random for phase 1). **Whoever scores, the ball always leaves
-  toward the other side** — no exceptions per phase (see the barrier gotcha).
+  toward the other side** — no exceptions per phase, and that has to hold a few frames
+  in, not only at the instant of the serve (see the serve gotcha).
 - **live things** — `phase_update()` runs once per play frame and owns the bonus
   mascot, the ship, its shots, the moving column and the shrink timers; it returns
   per-player `bonus[]` points (the mascot pays the last hitter). `frame_play()` adds those to
@@ -198,13 +199,23 @@ live in `src/config.h`.
 - **Brick gaps have to be much bigger than the ball.** The ball is 3 px and only
   scores if it fits entirely inside a gap: an 8 px gap in MURALHA measured 34 s per
   point, a 24 px gap 16 s. Measure pacing in the sim before shipping a phase.
-- **In a barrier phase the ball cannot be served from the center** (that is inside the
-  wall), so it is served on the *receiver's* own side, hugging the barrier — that keeps
-  the full half-court between the ball and their goal. Two wrong turns here: serving it
-  30 px from the goal made BARREIRA II close a 9-point phase in 10 s, and "fixing" that
-  by launching the ball *away* from the receiver read as the ball going to whoever just
-  scored. `tools/sim.py` + a loop over `reset_round(scorer)` checks all ten phases at
-  once; keep that invariant.
+- **The ball can never be served from inside something.** Where the middle of the court
+  is occupied, `phase_serve_x()` moves the serve to the *receiver's* own side — hugging
+  the wall in the barrier phases, ±34 px from the centre in PINBALL, COLUNA and NAVE —
+  which still leaves their whole half-court between the ball and their goal. Born inside
+  an obstacle, it is the **first bounce** that picks the side, and half the time that is
+  the side of whoever just scored. Three wrong turns here: serving 30 px from the goal
+  made BARREIRA II close a 9-point phase in 10 s; "fixing" that by launching the ball
+  *away* from the receiver read as the ball going to whoever just scored; and PHASE_NAVE
+  kept serving from the centre long after the others were fixed, because the ship is
+  neither a brick nor a solid — it is collided separately in `phase_ball_collide()`, so
+  an audit that walks `brick_cols`/`solids` says the centre is clear. It is not: the ship
+  resets to the middle of the court on *every* serve, and the ball was born inside it in
+  100 % of the rounds (measured: 51 % of the serves left toward the scorer, and 99 % of
+  them teleported the ball ~13 px vertically as `bounce_off()` pushed it out).
+  `tools/sim.py` + a loop over `reset_round(scorer)` checks all ten phases at once; the
+  test that catches this steps a few frames and looks at the sign of `vx` when the ball
+  leaves the central band — not just at the serve. Keep that invariant.
 - **Anything drawn in the middle column can collide with a phase's bricks** —
   BARREIRA III fills x≈117–139 for the full height, so the HUD keeps the phase score
   and totals outside the central band and the phase name only appears on the intro /
