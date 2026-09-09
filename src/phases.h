@@ -29,6 +29,25 @@ typedef enum {
 // Retangulo em pixels (raquetes, obstaculos, sprites).
 typedef struct { int x, y, w, h; } rect_t;
 
+// O que sai quando a bola acerta o mascote: um destes, sorteado na hora.
+// Menos o de pontos, todos duram BONUS_EFEITO_FRAMES.
+typedef enum {
+    BONUS_PONTOS = 0,     // +BONUS_POINTS, so no total geral
+    BONUS_RAQUETE,        // a raquete de quem pegou aumenta
+    BONUS_ENCOLHE,        // a raquete do adversario diminui
+    BONUS_ESCUDO,         // muro de tijolos quebraveis na frente do proprio gol
+    BONUS_TURBO,          // a bola sai acelerada a cada toque de quem pegou
+    BONUS_TIPOS
+} bonus_tipo_t;
+
+// Saida de phase_update(): os pontos extras do frame (so no total geral) e o
+// bonus que acabou de sair, para o aviso na tela. tipo < 0 = nada neste frame.
+typedef struct {
+    int pontos[2];
+    int tipo;
+    int jogador;
+} bonus_out_t;
+
 #define PADDLE_SEG_MAX 3
 
 // Como a fase muda as regras de bordas/fisica e o que ela solta na quadra.
@@ -48,8 +67,10 @@ const char *phase_hint(int idx);
 // Entra na fase: reconstroi tijolos, bichos e obstaculos.
 void phase_begin(int idx);
 
-// Comeco de cada ponto. Fases que rearmam os tijolos a cada round (MURALHA)
-// e os efeitos temporarios (raquete encolhida) voltam ao normal aqui.
+// Comeco de cada ponto. Fases que rearmam os tijolos a cada round (MURALHA) e
+// a raquete encolhida pelo tiro da nave voltam ao normal aqui. Os efeitos
+// ganhos no mascote NAO: os 10 s deles sao de tempo de jogo e atravessam o
+// ponto -- so o comeco da fase os apaga.
 void phase_round_reset(void);
 
 int  phase_current(void);
@@ -80,11 +101,18 @@ bool phase_ball_collide(int32_t prev_x, int32_t prev_y,
                         int32_t *vx, int32_t *vy);
 
 // Um frame das partes moveis da fase (mascote-bonus, nave, tiros, coluna).
-// Recebe a bola e as raquetes ja atualizadas; devolve em bonus[] os pontos
-// extras ganhos neste frame por cada jogador. 'last_hitter' e 0/1 (ou -1 se a
-// bola ainda nao foi rebatida) e diz quem leva o bonus do mascote.
+// Recebe a bola e as raquetes ja atualizadas e devolve em 'out' o que o
+// mascote pagou neste frame. 'last_hitter' e 0/1 (ou -1 se a bola ainda nao
+// foi rebatida) e diz quem leva o bonus.
 void phase_update(int32_t ball_x, int32_t ball_y, const int paddle_pos[2],
-                  int last_hitter, int bonus[2]);
+                  int last_hitter, bonus_out_t *out);
+
+// True enquanto o BONUS_TURBO de um jogador estiver valendo. Quem cronometra
+// o pique de cada toque e o game.c, que e quem manda na velocidade da bola.
+bool phase_turbo(int jogador);
+
+// Nome do bonus para o aviso na tela (maiusculas, sem acento).
+const char *bonus_nome(int tipo);
 
 // Desenha o que e da fase (tijolos, obstaculos, nave, mascote, tiros).
 void phase_draw(void);

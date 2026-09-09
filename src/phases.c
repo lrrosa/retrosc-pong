@@ -69,6 +69,12 @@ static int      nave_revide;    // revide pendente: -1 esquerda, +1 direita, 0 n
 static struct { int x, y, vx; bool on; } shots[NAVE_SHOT_MAX];
 static int      shrink[2];                      // frames de raquete encolhida
 
+// Efeitos ganhos no mascote: frames que faltam de cada tipo, por jogador
+// ATINGIDO (o BONUS_ENCOLHE cai no adversario de quem pegou). Sobrevivem ao
+// fim do ponto: os 10 s sao de tempo de jogo.
+static int      efeito[2][BONUS_TIPOS];
+static uint32_t escudo_alive[2];                // tijolos do escudo que restam
+
 // =============================================================
 // Tabela das fases
 // =============================================================
@@ -263,6 +269,13 @@ static void nave_reset(void) {
     nave_revide = 0;
 }
 
+static void efeitos_reset(void) {
+    for (int p = 0; p < 2; p++) {
+        for (int t = 0; t < BONUS_TIPOS; t++) efeito[p][t] = 0;
+        escudo_alive[p] = 0;
+    }
+}
+
 void phase_begin(int idx) {
     if ((unsigned)idx >= PHASE_COUNT) idx = 0;
     cur_phase   = idx;
@@ -273,6 +286,7 @@ void phase_begin(int idx) {
     brick_rebuild_round = false;
     nave_reset();
     shrink[0] = shrink[1] = 0;
+    efeitos_reset();
     for (int i = 0; i < NAVE_SHOT_MAX; i++) shots[i].on = false;
     bonus_left = BONUS_PASSES_MAX;
     bonus_sleep();
@@ -314,6 +328,41 @@ static int paddle_margin(void) {
     return (cur_phase == PHASE_MURALHA) ? (PADDLE_MARGIN + 6) : PADDLE_MARGIN;
 }
 
+// O escudo nasce entre a raquete e o gol, 2 px atras dela -- colado a raquete
+// o olho junta as duas coisas, que e a mesma razao de a MURALHA afastar a
+// raquete do muro dela. Nas fases normais nao ha esses 2 px de folga ate a
+// borda, e o clamp encosta o escudo no gol; na MURALHA, onde a raquete anda
+// mais para dentro, ele fica no meio do caminho sem tocar no muro da fase.
+static int escudo_x(int player) {
+    int m = paddle_margin();
+    int x = (player == 0) ? (m - BRICK_W - 2) : (FB_WIDTH - m + 2);
+    if (x < 0) x = 0;
+    if (x > FB_WIDTH - BRICK_W) x = FB_WIDTH - BRICK_W;
+    return x;
+}
+
+static void escudo_arma(int player) {
+    uint32_t m = 0;
+    for (int r = 0; r < BRICK_ROWS; r++)
+        if ((r % ESCUDO_PERIODO) < ESCUDO_CHEIO) m |= (1u << r);
+    escudo_alive[player & 1] = m;
+}
+
+bool phase_turbo(int jogador) {
+    return efeito[jogador & 1][BONUS_TURBO] > 0;
+}
+
+const char *bonus_nome(int tipo) {
+    switch (tipo) {
+        case BONUS_PONTOS:  return "BONUS +3";
+        case BONUS_RAQUETE: return "RAQUETE MAIOR";
+        case BONUS_ENCOLHE: return "ENCOLHEU O RIVAL";
+        case BONUS_ESCUDO:  return "ESCUDO";
+        case BONUS_TURBO:   return "TURBO";
+        default:            return "";
+    }
+}
+
 int phase_paddle_range(void) {
     if (cur_flags & PF_PADDLE_HORIZ)
         return FB_WIDTH / 2 - 2 * VOLLEY_MARGIN - VOLLEY_PADDLE_W;
@@ -335,13 +384,31 @@ int phase_paddle_segments(int player, int pos, rect_t *out) {
 
     int margin = paddle_margin();
     int x = (player == 0) ? margin : (FB_WIDTH - margin - PADDLE_W);
+    int p = player & 1;
+
+    // A raquete muda de tamanho, nunca de curso: phase_paddle_range() continua
+    // sendo o da raquete normal, e o que cresce ou encolhe fica centrado na
+    // mesma posicao lida do pot -- senao a raquete pularia debaixo da mao do
+    // jogador. Os dois bonus podem cair um em cada ponta da mesma fase; nesse
+    // caso um anula o outro.
+    bool maior = efeito[p][BONUS_RAQUETE] > 0;
+    bool menor = shrink[p] > 0 || efeito[p][BONUS_ENCOLHE] > 0;
+    if (maior && menor) maior = menor = false;
 
     if (cur_phase == PHASE_TRIPLO) {
+        int h = TRIPLE_SEG_H;
+        if (maior) h = TRIPLE_SEG_H_BIG;
+        if (menor) h = TRIPLE_SEG_H / 2;
+        int span  = 3 * h + 2 * TRIPLE_GAP;
+        int span0 = 3 * TRIPLE_SEG_H + 2 * TRIPLE_GAP;
+        int y0 = pos + (span0 - span) / 2;
+        if (y0 < 0) y0 = 0;
+        if (y0 > FB_HEIGHT - span) y0 = FB_HEIGHT - span;
         for (int i = 0; i < 3; i++) {
             out[i].x = x;
-            out[i].y = pos + i * (TRIPLE_SEG_H + TRIPLE_GAP);
+            out[i].y = y0 + i * (h + TRIPLE_GAP);
             out[i].w = PADDLE_W;
-            out[i].h = TRIPLE_SEG_H;
+            out[i].h = h;
         }
         return 3;
     }
@@ -350,9 +417,13 @@ int phase_paddle_segments(int player, int pos, rect_t *out) {
     out[0].y = pos;
     out[0].w = PADDLE_W;
     out[0].h = PADDLE_H;
-    // Tiro da nave: a raquete fica pela metade, centrada na mesma posicao,
-    // para o curso do pot nao mudar debaixo da mao do jogador.
-    if (shrink[player & 1] > 0) {
+    if (maior) {
+        out[0].y = pos - (PADDLE_H_BIG - PADDLE_H) / 2;
+        out[0].h = PADDLE_H_BIG;
+        if (out[0].y < 0) out[0].y = 0;
+        if (out[0].y > FB_HEIGHT - PADDLE_H_BIG)
+            out[0].y = FB_HEIGHT - PADDLE_H_BIG;
+    } else if (menor) {
         out[0].y = pos + PADDLE_H / 4;
         out[0].h = PADDLE_H / 2;
     }
@@ -395,40 +466,68 @@ int phase_serve_y(void) {
 // =============================================================
 // Colisao da bola com o cenario
 // =============================================================
-// Rebate a bola num retangulo em que ela ja entrou. A face de saida sai da
-// DIRECAO em que a bola vinha (a face que ela atravessou), e nao da menor
-// penetracao: escolher pela penetracao devolvia a bola pela lateral quando ela
-// tinha entrado por cima perto do canto e, como a velocidade ja apontava para
-// fora naquele eixo, nada era invertido -- a bola seguia reto, "atravessando"
-// o obstaculo. Vale para tijolo, bumper, coluna movel, rede e nave.
-// Devolve true se quem inverteu foi o eixo X.
-static bool bounce_off(int rx0, int ry0, int rx1, int ry1,
+// Rebate a bola num retangulo em que ela ja entrou. A face sai da TRAVESSIA --
+// onde a bola estava no frame anterior contra o retangulo de agora -- e nao da
+// velocidade dela: quem ja cruzava a faixa horizontal do obstaculo so pode ter
+// entrado por cima ou por baixo, diga o que disser a velocidade. Isso e o que
+// conserta os obstaculos que ANDAM: a coluna movel alcanca por tras uma bola
+// que ja estava indo embora e, pela velocidade, ela era "devolvida" para quem
+// acabara de rebater (medido: um quarto dos rebotes da coluna). Escolher pela
+// menor penetracao, que foi a primeira versao disto, tinha o defeito oposto:
+// a bola entrada pelo canto saia de lado sem ninguem inverter e atravessava o
+// obstaculo. Quando ela ja estava dentro nos dois eixos (o obstaculo veio por
+// cima dela) ou em nenhum (entrou bem pelo canto), vale a saida mais curta. A
+// velocidade so e invertida se ainda apontar para dentro: assim o obstaculo
+// que alcanca a bola a empurra, em vez de rebate-la.
+// Vale para tijolo, escudo, bumper, coluna movel, rede e nave.
+// Devolve true se quem mudou foi o eixo X.
+static bool bounce_off(int32_t prev_x, int32_t prev_y,
+                       int rx0, int ry0, int rx1, int ry1,
                        int32_t *bx, int32_t *by,
                        int32_t *vx, int32_t *vy) {
     int x0 = *bx >> 8, x1 = x0 + BALL_SIZE - 1;
     int y0 = *by >> 8, y1 = y0 + BALL_SIZE - 1;
+    int ax0 = prev_x >> 8, ax1 = ax0 + BALL_SIZE - 1;
+    int ay0 = prev_y >> 8, ay1 = ay0 + BALL_SIZE - 1;
 
-    // Penetracao contra a face oposta ao movimento; eixo parado nao concorre.
-    const int LONGE = 0x7FFF;
-    int p_x = (*vx > 0) ? (x1 - rx0 + 1) : ((*vx < 0) ? (rx1 - x0 + 1) : LONGE);
-    int p_y = (*vy > 0) ? (y1 - ry0 + 1) : ((*vy < 0) ? (ry1 - y0 + 1) : LONGE);
+    bool antes_x = !(ax1 < rx0 || ax0 > rx1);   // ja cruzava a faixa vertical
+    bool antes_y = !(ay1 < ry0 || ay0 > ry1);   // ja cruzava a faixa horizontal
 
-    if (p_x <= p_y) {
-        *bx = (*vx > 0) ? ((int32_t)(rx0 - BALL_SIZE) << 8)
-                        : ((int32_t)(rx1 + 1) << 8);
-        *vx = -*vx;
+    int p_esq = x1 - rx0 + 1, p_dir = rx1 - x0 + 1;   // saidas possiveis
+    int p_cim = y1 - ry0 + 1, p_bai = ry1 - y0 + 1;
+
+    bool eixo_x;
+    if (antes_x != antes_y) {
+        eixo_x = antes_y;                       // entrou por uma face vertical
+    } else {
+        int m_x = (p_esq < p_dir) ? p_esq : p_dir;
+        int m_y = (p_cim < p_bai) ? p_cim : p_bai;
+        eixo_x = (m_x <= m_y);
+    }
+
+    if (eixo_x) {
+        bool esquerda = (ax1 < rx0) ? true
+                      : (ax0 > rx1) ? false
+                                    : (p_esq <= p_dir);
+        *bx = esquerda ? ((int32_t)(rx0 - BALL_SIZE) << 8)
+                       : ((int32_t)(rx1 + 1) << 8);
+        if (esquerda) { if (*vx > 0) *vx = -*vx; }
+        else          { if (*vx < 0) *vx = -*vx; }
         return true;
     }
-    *by = (*vy > 0) ? ((int32_t)(ry0 - BALL_SIZE) << 8)
-                    : ((int32_t)(ry1 + 1) << 8);
-    *vy = -*vy;
+    bool cima = (ay1 < ry0) ? true
+              : (ay0 > ry1) ? false
+                            : (p_cim <= p_bai);
+    *by = cima ? ((int32_t)(ry0 - BALL_SIZE) << 8)
+               : ((int32_t)(ry1 + 1) << 8);
+    if (cima) { if (*vy > 0) *vy = -*vy; }
+    else      { if (*vy < 0) *vy = -*vy; }
     return false;
 }
 
 bool phase_ball_collide(int32_t prev_x, int32_t prev_y,
                         int32_t *bx, int32_t *by,
                         int32_t *vx, int32_t *vy) {
-    (void)prev_x; (void)prev_y;      // a face de saida vem da velocidade
     int x0 = *bx >> 8, x1 = x0 + BALL_SIZE - 1;
     int y0 = *by >> 8, y1 = y0 + BALL_SIZE - 1;
 
@@ -447,7 +546,30 @@ bool phase_ball_collide(int32_t prev_x, int32_t prev_y,
         for (int r = r0; r <= r1; r++) {
             if (!(brick_alive[c] & (1u << r))) continue;
             brick_alive[c] &= ~(1u << r);
-            bounce_off(cx0, r * BRICK_H, cx1, (r + 1) * BRICK_H - 1,
+            bounce_off(prev_x, prev_y,
+                       cx0, r * BRICK_H, cx1, (r + 1) * BRICK_H - 1,
+                       bx, by, vx, vy);
+            return true;
+        }
+    }
+
+    // --- escudo do bonus: os mesmos tijolos, na frente do gol ---
+    for (int p = 0; p < 2; p++) {
+        if (efeito[p][BONUS_ESCUDO] <= 0 || escudo_alive[p] == 0) continue;
+        int cx0 = escudo_x(p);
+        int cx1 = cx0 + BRICK_W - 1;
+        if (x1 < cx0 || x0 > cx1) continue;
+
+        int r0 = y0 / BRICK_H;
+        int r1 = y1 / BRICK_H;
+        if (r0 < 0) r0 = 0;
+        if (r1 > BRICK_ROWS - 1) r1 = BRICK_ROWS - 1;
+
+        for (int r = r0; r <= r1; r++) {
+            if (!(escudo_alive[p] & (1u << r))) continue;
+            escudo_alive[p] &= ~(1u << r);
+            bounce_off(prev_x, prev_y,
+                       cx0, r * BRICK_H, cx1, (r + 1) * BRICK_H - 1,
                        bx, by, vx, vy);
             return true;
         }
@@ -458,7 +580,8 @@ bool phase_ball_collide(int32_t prev_x, int32_t prev_y,
         const rect_t *s = &solids[i];
         if (x1 < s->x || x0 > s->x + s->w - 1) continue;
         if (y1 < s->y || y0 > s->y + s->h - 1) continue;
-        bool eixo_x = bounce_off(s->x, s->y, s->x + s->w - 1, s->y + s->h - 1,
+        bool eixo_x = bounce_off(prev_x, prev_y,
+                                 s->x, s->y, s->x + s->w - 1, s->y + s->h - 1,
                                  bx, by, vx, vy);
         if (cur_phase == PHASE_PINBALL || cur_phase == PHASE_COLUNA) {
             // Gira o vetor alguns graus para um lado ou para o outro: duas
@@ -490,7 +613,8 @@ bool phase_ball_collide(int32_t prev_x, int32_t prev_y,
             // rebater. Aqui fica so o lado de onde a bola veio, usado como
             // reserva enquanto ninguem tocou nela na jogada.
             nave_revide = (*vx > 0) ? -1 : +1;
-            bounce_off(NAVE_X, nave_y, gx1, gy1, bx, by, vx, vy);
+            bounce_off(prev_x, prev_y, NAVE_X, nave_y, gx1, gy1,
+                       bx, by, vx, vy);
             return true;
         }
     }
@@ -522,8 +646,23 @@ static void bonus_spawn(void) {
     bonus_on   = true;
 }
 
+// Sorteia o que o mascote pagou. O de pontos e o unico que o game.c precisa
+// somar; os outros ficam aqui, cronometrados junto com as raquetes e o escudo.
+static void aplica_bonus(int p, int tipo, bonus_out_t *out) {
+    if (tipo == BONUS_PONTOS) {
+        out->pontos[p] += BONUS_POINTS;
+    } else if (tipo == BONUS_ENCOLHE) {
+        efeito[1 - p][BONUS_ENCOLHE] = BONUS_EFEITO_FRAMES;   // vai no rival
+    } else {
+        if (tipo == BONUS_ESCUDO) escudo_arma(p);
+        efeito[p][tipo] = BONUS_EFEITO_FRAMES;
+    }
+    out->tipo    = tipo;
+    out->jogador = p;                 // quem pegou, mesmo quando o efeito e no rival
+}
+
 static void update_bonus(int32_t ball_x, int32_t ball_y,
-                        int last_hitter, int bonus[2]) {
+                        int last_hitter, bonus_out_t *out) {
     if (!bonus_on) {
         if (bonus_left <= 0) return;             // ja passou o limite da fase
         if (--bonus_wait <= 0) { bonus_left--; bonus_spawn(); }
@@ -542,8 +681,9 @@ static void update_bonus(int32_t ball_x, int32_t ball_y,
     if (overlap(ball_x >> 8, ball_y >> 8, BALL_SIZE, BALL_SIZE,
                 sx, sy, BONUS_W, BONUS_H)) {
         // A bola atravessa o mascote (nao desvia a jogada); quem rebateu por
-        // ultimo leva o bonus.
-        if (last_hitter == 0 || last_hitter == 1) bonus[last_hitter] += BONUS_POINTS;
+        // ultimo leva o bonus, sorteado entre os cinco tipos.
+        if (last_hitter == 0 || last_hitter == 1)
+            aplica_bonus(last_hitter, (int)(get_rand_32() % BONUS_TIPOS), out);
         bonus_sleep();
     }
 }
@@ -614,12 +754,17 @@ static void update_nave(const int paddle_pos[2], int last_hitter) {
 }
 
 void phase_update(int32_t ball_x, int32_t ball_y, const int paddle_pos[2],
-                  int last_hitter, int bonus[2]) {
-    bonus[0] = bonus[1] = 0;
+                  int last_hitter, bonus_out_t *out) {
+    out->pontos[0] = out->pontos[1] = 0;
+    out->tipo = out->jogador = -1;
     frame_ctr++;
-    for (int p = 0; p < 2; p++) if (shrink[p] > 0) shrink[p]--;
+    for (int p = 0; p < 2; p++) {
+        if (shrink[p] > 0) shrink[p]--;
+        for (int t = 0; t < BONUS_TIPOS; t++)
+            if (efeito[p][t] > 0) efeito[p][t]--;
+    }
 
-    if (cur_flags & PF_TEM_BONUS) update_bonus(ball_x, ball_y, last_hitter, bonus);
+    if (cur_flags & PF_TEM_BONUS) update_bonus(ball_x, ball_y, last_hitter, out);
     if (cur_phase == PHASE_COLUNA)   update_coluna();
     if (cur_phase == PHASE_NAVE) update_nave(paddle_pos, last_hitter);
 }
@@ -670,6 +815,16 @@ void phase_draw(void) {
     }
     for (int i = 0; i < solid_count; i++)
         gfx_fill_rect(solids[i].x, solids[i].y, solids[i].w, solids[i].h, 1);
+
+    // Escudo: pisca no ultimo segundo para o dono ver que ele vai embora.
+    for (int p = 0; p < 2; p++) {
+        if (efeito[p][BONUS_ESCUDO] <= 0) continue;
+        if (efeito[p][BONUS_ESCUDO] < 60 && ((frame_ctr >> 3) & 1)) continue;
+        int x = escudo_x(p);
+        for (int r = 0; r < BRICK_ROWS; r++)
+            if (escudo_alive[p] & (1u << r))
+                gfx_fill_rect(x, r * BRICK_H, BRICK_W, BRICK_H - 1, 1);
+    }
 
     if (cur_phase == PHASE_NAVE) {
         draw_sprite_nave(NAVE_X, nave_y, NAVE_SCALE);

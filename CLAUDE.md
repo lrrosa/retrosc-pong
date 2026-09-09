@@ -74,8 +74,11 @@ step `frame()`); that is how the phase pacing numbers below were measured.
 `bit = 31 - (x & 31)`. All drawing is in `gfx.{c,h}`; text via the 5×7 font in
 `font.{c,h}` (glyphs indexed `['X' - 0x20]`). In 1-bit there is no contrast to fall
 back on: white text over bricks or bumpers is unreadable, so anything drawn on top of
-the court (the countdown digits, the bonus mascot's "BONUS") clears a black rectangle
-first — `center_text_boxed()` in `game.c`.
+the court (the countdown digits, the bonus mascot's "BONUS", the prize name) clears a
+black rectangle first — `text_boxed_at()` in `game.c`, of which `center_text_boxed()`
+is the centred case. The prize name is drawn at a quarter of the width, on the side of
+whoever took it: it says *who* as well as *what*, and it stays out of the central band
+where the barrier phases keep their bricks.
 
 **Game** (`game.{c,h}`) is a state machine: `GS_ATTRACT → GS_MENU → GS_PHASE_INTRO →
 GS_COUNTDOWN → GS_PLAY → GS_ROUND_END → (GS_PHASE_END → next phase | GS_GAME_OVER) →
@@ -132,7 +135,7 @@ is called once per vsync.
   in, not only at the instant of the serve (see the serve gotcha).
 - **live things** — `phase_update()` runs once per play frame and owns the bonus
   mascot, the ship, its shots, the moving column and the shrink timers; it returns
-  per-player `bonus[]` points (the mascot pays the last hitter). The ship also
+  a `bonus_out_t` (the mascot pays the last hitter). The ship also
   **shoots back**: `phase_ball_collide()` cannot aim the reply because it never sees
   `last_hitter`, so it leaves the side in `nave_revide` and `update_nave()` fires it
   the same frame — `physics()` always runs before `phase_update()` in `frame_play()`,
@@ -157,6 +160,26 @@ the 24 rows a column has). `PHASE_MURALHA` rebuilds every point
 (`brick_rebuild_round`). The **bonus mascot is not a phase**: any phase with
 `PF_TEM_BONUS` gets it on a random timer (at most `BONUS_PASSES_MAX` passes per phase),
 crossing on a diagonal from the top or the bottom with "BONUS" blinking beside it.
+Hitting it draws one of five prizes (`bonus_tipo_t`), the CPU included: points, a
+bigger paddle, the rival's paddle halved, a breakable shield in front of your own
+goal, or the turbo. Four rules keep them from breaking things:
+  - **the paddle changes size, never travel** — `phase_paddle_range()` is always the
+    normal paddle's, and what grows or shrinks stays centred on the position read
+    from the pot. Change the range mid-phase and the paddle jumps under the player's
+    hand, which is the same bug class as the pause takeover.
+  - **the turbo has a hard ceiling** (`TURBO_MAX_Q`). Ball/paddle collision is
+    instantaneous overlap, no sweep: with both 3 px wide, a ball moving 6 px/frame
+    can be in front of the paddle on one frame and behind it on the next without ever
+    overlapping. The 4 px brick columns break at 7. Everything above 5.5 px/frame is
+    a goal through a solid paddle.
+  - **the two paddle bonuses can meet** — one player can hold RAQUETE while the other
+    lands ENCOLHE on them. They cancel, they do not stack.
+  - **effects outlive the round** (only `phase_begin()` clears them), unlike the
+    nave's shrink, which `phase_round_reset()` wipes. The 10 s are 10 s of play:
+    `phase_update()` only runs in `GS_PLAY`, so they freeze between points.
+  The split of ownership is deliberate: `phases.c` counts the 10 s windows because the
+  paddles and the bricks live there, and `game.c` counts the 1.5 s turbo burst because
+  it owns `ball_speed_q`. `phase_turbo()` is the only wire between them.
 The ship (`PHASE_NAVE`) is the opposite: it stays in the middle of the court, shoots,
 and the ball bounces off it. The two swapped roles late — the mascot is the RetroSC
 emblem, so it belongs to the reward, not to an obstacle — which is why the sprite of
@@ -233,6 +256,11 @@ live in `src/config.h`.
   phase score at cx±30 with the running total beside it, further out — it used to sit
   on a second line at y=34 and that ate a stripe of the court. The pinball diamond
   starts at y=44 for the same reason.
+- **A goal has to take the ball off the screen, not just out of play.** Everywhere else
+  the ball scores by fully leaving through the side, so the frozen `GS_ROUND_END` frame
+  shows an empty court. REBOUND scores on the *floor*, and the ball used to stop there
+  with a stripe of pixels still poking out of the bottom edge; `physics()` now parks it
+  at `FB_HEIGHT` before `add_point()`.
 - **REBOUND is the phase that stresses the engine's assumptions** — it is the only one
   with horizontal paddles, gravity, scoring floor and bouncing side walls. When adding
   anything to `physics()` or the AI, check it against that phase: the AI, for instance,
@@ -254,17 +282,35 @@ live in `src/config.h`.
 - **Ball tunneling is bounded by paddle width + ball size** (3 + 3 = 6 px) vs the
   max step `BALL_SPEED_MAX_Q` = 5 px/frame. Raising the max speed past 6 px/frame
   needs swept collision, not just a bigger constant.
-- **Pick the bounce face from the ball's direction, never from the smallest
-  penetration.** `bounce_off()` resolves on the axis whose *opposing* face the ball
-  crossed. The obvious "push out the nearest side" version has a hole: a ball entering
-  a bumper from above near a corner gets pushed sideways, and since its horizontal
-  velocity already points that way nothing is inverted — it sails through the obstacle
-  keeping its trajectory. This also removed the need for a separate routine for moving
-  obstacles (the ship, the COLUNA stack): direction-based resolution never leaves the
-  ball inside. The spin applied after it must not flip the axis that just bounced,
-  though — with the ball nearly vertical the rotation can, and then the clamp to
-  `BALL_VX_MIN_Q` freezes that wrong sign and the ball heads back into the bumper it
-  just left.
+- **Pick the bounce face from the crossing, not from the velocity and not from the
+  smallest penetration.** Both of the simpler rules were shipped and both were wrong,
+  in opposite directions:
+  - *smallest penetration* — a ball entering a bumper from above near a corner gets
+    pushed sideways, and since its horizontal velocity already points that way nothing
+    is inverted: it sails through the obstacle keeping its trajectory.
+  - *velocity* — fine while the scenery holds still, wrong the moment it moves. The
+    COLUNA stack walks 1 px per frame and catches up with a ball that is already on its
+    way out; the penetration is then measured against the face on the *far* side, comes
+    out huge, and the other axis wins. In play that reads as the ball touching the top
+    or bottom of a post and being sent straight back to whoever just hit it, even with
+    the ball well past the middle of the post. Measured in the sim: **a quarter of every
+    collision in COLUNA** inverted `vx` without the ball having crossed a vertical face
+    at all.
+
+  What `bounce_off()` does now is compare the ball's **previous** position with the
+  rectangle's *current* one: whoever already straddled the obstacle's horizontal band
+  can only have come in through the top or the bottom, whatever the velocity says. When
+  the ball straddled both bands (the obstacle walked onto it) or neither (a true corner
+  entry), the shortest way out wins. And the velocity is only inverted when it still
+  points inward, so an obstacle that catches up with the ball **pushes** it instead of
+  returning it. That is why moving scenery needs no separate routine. The spin applied
+  after it must not flip the axis that just bounced, though — with the ball nearly
+  vertical the rotation can, and then the clamp to `BALL_VX_MIN_Q` freezes that wrong
+  sign and the ball heads back into the bumper it just left.
+  The test that catches all of this is cheap: wrap `phase_ball_collide()` in the sim and
+  count the hits where an axis was inverted although the previous position already
+  straddled that band. It must be zero — for `vx`; a handful of `vy` cases in
+  PINBALL/COLUNA are the spin doing its job, not the bounce.
 - **Two parallel faces put the ball into orbit.** Bumpers return it at the same angle
   forever, so PINBALL/COLUNA rotate the velocity a few degrees on every bumper hit
   (`BUMPER_SPIN_SHIFT`). It must be a *rotation*: the first attempt added a random

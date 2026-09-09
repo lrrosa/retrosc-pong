@@ -76,6 +76,22 @@ BONUS_PASSES_MAX   = 2
 BONUS_POINTS        = 3
 TOTAL_FLASH_FRAMES = 90
 
+# bonus sorteados no mascote (espelha bonus_tipo_t de phases.h)
+(BONUS_PONTOS, BONUS_RAQUETE, BONUS_ENCOLHE, BONUS_ESCUDO, BONUS_TURBO,
+ BONUS_TIPOS) = range(6)
+BONUS_NOMES = {BONUS_PONTOS: "BONUS +3", BONUS_RAQUETE: "RAQUETE MAIOR",
+               BONUS_ENCOLHE: "ENCOLHEU O RIVAL", BONUS_ESCUDO: "ESCUDO",
+               BONUS_TURBO: "TURBO"}
+BONUS_EFEITO_FRAMES = 10 * 60
+BONUS_AVISO_FRAMES  = 120
+PADDLE_H_BIG        = PADDLE_H * 3 // 2
+TRIPLE_SEG_H_BIG    = TRIPLE_SEG_H * 3 // 2
+ESCUDO_PERIODO      = 4
+ESCUDO_CHEIO        = 3
+TURBO_HOLD_FRAMES   = 90
+TURBO_EXTRA_Q       = 0x180
+TURBO_MAX_Q         = 0x580
+
 NAVE_SCALE       = 2
 NAVE_W           = 13 * NAVE_SCALE
 NAVE_H           = 8 * NAVE_SCALE
@@ -180,6 +196,10 @@ class Phase:
         self.nave_reset()
         self.shots = []
         self.shrink = [0, 0]
+        # efeitos do mascote: frames que faltam, por jogador ATINGIDO. Nao sao
+        # zerados no round_reset -- os 10 s sao de tempo de jogo (ver phases.c)
+        self.efeito = [[0] * BONUS_TIPOS for _ in range(2)]
+        self.escudo_alive = [0, 0]
         self.bonus_left = BONUS_PASSES_MAX
         self.bonus_sleep()
 
@@ -290,6 +310,22 @@ class Phase:
     def paddle_margin(self):
         return PADDLE_MARGIN + 6 if self.cur == PHASE_MURALHA else PADDLE_MARGIN
 
+    def escudo_x(self, player):
+        # 2 px atras da raquete, aparado na borda (ver phases.c)
+        m = self.paddle_margin()
+        x = (m - BRICK_W - 2) if player == 0 else (FB_W - m + 2)
+        return max(0, min(FB_W - BRICK_W, x))
+
+    def escudo_arma(self, player):
+        m = 0
+        for r in range(BRICK_ROWS):
+            if (r % ESCUDO_PERIODO) < ESCUDO_CHEIO:
+                m |= 1 << r
+        self.escudo_alive[player & 1] = m
+
+    def turbo(self, jogador):
+        return self.efeito[jogador & 1][BONUS_TURBO] > 0
+
     def paddle_range(self):
         if self.flags & PF_PADDLE_HORIZ:
             return FB_W // 2 - 2 * VOLLEY_MARGIN - VOLLEY_PADDLE_W
@@ -304,10 +340,26 @@ class Phase:
                      VOLLEY_PADDLE_W, VOLLEY_PADDLE_H)]
         m = self.paddle_margin()
         x = m if player == 0 else FB_W - m - PADDLE_W
+        p = player & 1
+        # o curso do pot (paddle_range) nao muda: o que cresce ou encolhe fica
+        # centrado na mesma posicao lida. Um bonus anula o outro.
+        maior = self.efeito[p][BONUS_RAQUETE] > 0
+        menor = self.shrink[p] > 0 or self.efeito[p][BONUS_ENCOLHE] > 0
+        if maior and menor:
+            maior = menor = False
         if self.cur == PHASE_TRIPLO:
-            return [(x, pos + i * (TRIPLE_SEG_H + TRIPLE_GAP),
-                     PADDLE_W, TRIPLE_SEG_H) for i in range(3)]
-        if self.shrink[player & 1] > 0:
+            h = TRIPLE_SEG_H_BIG if maior else (
+                TRIPLE_SEG_H // 2 if menor else TRIPLE_SEG_H)
+            span = 3 * h + 2 * TRIPLE_GAP
+            span0 = 3 * TRIPLE_SEG_H + 2 * TRIPLE_GAP
+            y0 = max(0, min(FB_H - span, pos + (span0 - span) // 2))
+            return [(x, y0 + i * (h + TRIPLE_GAP), PADDLE_W, h)
+                    for i in range(3)]
+        if maior:
+            y0 = max(0, min(FB_H - PADDLE_H_BIG,
+                            pos - (PADDLE_H_BIG - PADDLE_H) // 2))
+            return [(x, y0, PADDLE_W, PADDLE_H_BIG)]
+        if menor:
             return [(x, pos + PADDLE_H // 4, PADDLE_W, PADDLE_H // 2)]
         return [(x, pos, PADDLE_W, PADDLE_H)]
 
@@ -330,19 +382,30 @@ class Phase:
 
     # ---------- colisao ----------
     @staticmethod
-    def _bounce(rx0, ry0, rx1, ry1, ball):
-        # face de saida escolhida pela direcao da bola (ver phases.c)
+    def _bounce(prev, rx0, ry0, rx1, ry1, ball):
+        # face escolhida pela TRAVESSIA, nao pela velocidade (ver phases.c)
         bx, by, vx, vy = ball
         x0, x1 = bx >> 8, (bx >> 8) + BALL_SIZE - 1
         y0, y1 = by >> 8, (by >> 8) + BALL_SIZE - 1
-        LONGE = 0x7FFF
-        p_x = (x1 - rx0 + 1) if vx > 0 else ((rx1 - x0 + 1) if vx < 0 else LONGE)
-        p_y = (y1 - ry0 + 1) if vy > 0 else ((ry1 - y0 + 1) if vy < 0 else LONGE)
-        if p_x <= p_y:
-            return (((rx0 - BALL_SIZE) << 8) if vx > 0 else ((rx1 + 1) << 8),
-                    by, -vx, vy), True
-        return (bx, ((ry0 - BALL_SIZE) << 8) if vy > 0 else ((ry1 + 1) << 8),
-                vx, -vy), False
+        ax0, ax1 = prev[0] >> 8, (prev[0] >> 8) + BALL_SIZE - 1
+        ay0, ay1 = prev[1] >> 8, (prev[1] >> 8) + BALL_SIZE - 1
+        antes_x = not (ax1 < rx0 or ax0 > rx1)
+        antes_y = not (ay1 < ry0 or ay0 > ry1)
+        p_esq, p_dir = x1 - rx0 + 1, rx1 - x0 + 1
+        p_cim, p_bai = y1 - ry0 + 1, ry1 - y0 + 1
+        if antes_x != antes_y:
+            eixo_x = antes_y
+        else:
+            eixo_x = min(p_esq, p_dir) <= min(p_cim, p_bai)
+        if eixo_x:
+            esquerda = True if ax1 < rx0 else (
+                False if ax0 > rx1 else p_esq <= p_dir)
+            return (((rx0 - BALL_SIZE) << 8) if esquerda else ((rx1 + 1) << 8),
+                    by, -abs(vx) if esquerda else abs(vx), vy), True
+        cima = True if ay1 < ry0 else (
+            False if ay0 > ry1 else p_cim <= p_bai)
+        return (bx, ((ry0 - BALL_SIZE) << 8) if cima else ((ry1 + 1) << 8),
+                vx, -abs(vy) if cima else abs(vy)), False
 
     def ball_collide(self, prev, ball):
         """prev/ball = (x, y, vx, vy) em Q8. Devolve (hit, novo ball)."""
@@ -362,7 +425,25 @@ class Phase:
                 if not (self.alive[c] & (1 << r)):
                     continue
                 self.alive[c] &= ~(1 << r)
-                novo, _ = self._bounce(cx0, r * BRICK_H, cx1,
+                novo, _ = self._bounce(prev, cx0, r * BRICK_H, cx1,
+                                       (r + 1) * BRICK_H - 1, ball)
+                return True, novo
+
+        # escudo do bonus: os mesmos tijolos, na frente do gol
+        for p in (0, 1):
+            if self.efeito[p][BONUS_ESCUDO] <= 0 or not self.escudo_alive[p]:
+                continue
+            cx0 = self.escudo_x(p)
+            cx1 = cx0 + BRICK_W - 1
+            if x1 < cx0 or x0 > cx1:
+                continue
+            r0 = max(0, y0 // BRICK_H)
+            r1 = min(BRICK_ROWS - 1, y1 // BRICK_H)
+            for r in range(r0, r1 + 1):
+                if not (self.escudo_alive[p] & (1 << r)):
+                    continue
+                self.escudo_alive[p] &= ~(1 << r)
+                novo, _ = self._bounce(prev, cx0, r * BRICK_H, cx1,
                                        (r + 1) * BRICK_H - 1, ball)
                 return True, novo
 
@@ -371,7 +452,8 @@ class Phase:
                 continue
             if y1 < sy or y0 > sy + sh - 1:
                 continue
-            novo, eixo_x = self._bounce(sx, sy, sx + sw - 1, sy + sh - 1, ball)
+            novo, eixo_x = self._bounce(prev, sx, sy, sx + sw - 1,
+                                        sy + sh - 1, ball)
             if self.cur in (PHASE_PINBALL, PHASE_COLUNA):
                 bx2, by2, vx2, vy2 = novo
                 giro = 1 if random.getrandbits(1) else -1
@@ -394,7 +476,8 @@ class Phase:
             if not (x1 < NAVE_X or x0 > gx1 or y1 < self.nave_y or y0 > gy1):
                 # lado de onde a bola veio: reserva do revide (ver phases.c)
                 self.nave_revide = -1 if ball[2] > 0 else 1
-                novo, _ = self._bounce(NAVE_X, self.nave_y, gx1, gy1, ball)
+                novo, _ = self._bounce(prev, NAVE_X, self.nave_y, gx1, gy1,
+                                       ball)
                 return True, novo
         return False, ball
 
@@ -414,7 +497,19 @@ class Phase:
         self.bonus_vx_q = -vx if random.getrandbits(1) else vx
         self.bonus_on = True
 
-    def _update_bonus(self, ball_x, ball_y, last_hitter, bonus):
+    def aplica_bonus(self, p, tipo, out):
+        if tipo == BONUS_PONTOS:
+            out["pontos"][p] += BONUS_POINTS
+        elif tipo == BONUS_ENCOLHE:
+            self.efeito[1 - p][BONUS_ENCOLHE] = BONUS_EFEITO_FRAMES
+        else:
+            if tipo == BONUS_ESCUDO:
+                self.escudo_arma(p)
+            self.efeito[p][tipo] = BONUS_EFEITO_FRAMES
+        out["tipo"] = tipo
+        out["jogador"] = p
+
+    def _update_bonus(self, ball_x, ball_y, last_hitter, out):
         if not self.bonus_on:
             if self.bonus_left <= 0:
                 return
@@ -437,18 +532,22 @@ class Phase:
         if self._overlap((ball_x >> 8, ball_y >> 8, BALL_SIZE, BALL_SIZE),
                          (sx, sy, BONUS_W, BONUS_H)):
             if last_hitter in (0, 1):
-                bonus[last_hitter] += BONUS_POINTS
+                self.aplica_bonus(last_hitter,
+                                  random.randrange(BONUS_TIPOS), out)
             self.bonus_sleep()
 
     def update(self, ball_x, ball_y, paddle_pos, last_hitter):
-        bonus = [0, 0]
+        out = {"pontos": [0, 0], "tipo": -1, "jogador": -1}
         self.frame_ctr += 1
         for p in (0, 1):
             if self.shrink[p] > 0:
                 self.shrink[p] -= 1
+            for t in range(BONUS_TIPOS):
+                if self.efeito[p][t] > 0:
+                    self.efeito[p][t] -= 1
 
         if self.flags & PF_TEM_BONUS:
-            self._update_bonus(ball_x, ball_y, last_hitter, bonus)
+            self._update_bonus(ball_x, ball_y, last_hitter, out)
 
         if self.cur == PHASE_COLUNA:
             mx = FB_H - self._coluna_span()
@@ -492,7 +591,7 @@ class Phase:
                 if not pego:
                     vivos.append(s)
             self.shots = vivos
-        return bonus
+        return out
 
     # ---------- desenho ----------
     def draw(self, fb, mascote=None, glyphs=None):
@@ -502,6 +601,16 @@ class Phase:
                     fb.fill_rect(cx, r * BRICK_H, BRICK_W, BRICK_H - 1, 1)
         for (sx, sy, sw, sh) in self.solids:
             fb.fill_rect(sx, sy, sw, sh, 1)
+
+        for p in (0, 1):                       # escudo pisca no ultimo segundo
+            if self.efeito[p][BONUS_ESCUDO] <= 0:
+                continue
+            if self.efeito[p][BONUS_ESCUDO] < 60 and ((self.frame_ctr >> 3) & 1):
+                continue
+            ex = self.escudo_x(p)
+            for r in range(BRICK_ROWS):
+                if self.escudo_alive[p] & (1 << r):
+                    fb.fill_rect(ex, r * BRICK_H, BRICK_W, BRICK_H - 1, 1)
 
         if self.cur == PHASE_NAVE:
             s = NAVE_SCALE
@@ -649,13 +758,17 @@ def center_text(fb, glyphs, y, s, scale, color=1):
 def right_text(fb, glyphs, x_right, y, s, scale, color=1):
     gfx_text(fb, glyphs, x_right - text_width(s, scale), y, s, scale, color)
 
-def center_text_boxed(fb, glyphs, y, s, scale):
+def text_boxed_at(fb, glyphs, cx, y, s, scale):
     margem = 4
     w = text_width(s, scale)
     h = 7 * scale
-    x = (FB_W - w) // 2
+    x = max(margem, min(FB_W - w - margem, cx - w // 2))
     fb.fill_rect(x - margem, y - margem, w + 2 * margem, h + 2 * margem, 0)
     gfx_text(fb, glyphs, x, y, s, scale, 1)
+
+
+def center_text_boxed(fb, glyphs, y, s, scale):
+    text_boxed_at(fb, glyphs, FB_W // 2, y, s, scale)
 
 # ============================================================
 # Estado do jogo
@@ -691,6 +804,9 @@ class Game:
         self.ball_vx = BALL_SPEED_INIT_Q
         self.ball_vy = BALL_SPEED_INIT_Q // 2
         self.ball_speed_q = BALL_SPEED_INIT_Q
+        self.turbo_frames = 0
+        self.aviso_tipo = self.aviso_jogador = -1
+        self.aviso_frames = 0
         self.baseline_pot = [2048, 2048]
         self.movement_remaining = 0
         self.last_moved = 0
@@ -730,10 +846,17 @@ class Game:
     def roll_ai_bias(self):
         self.ai_bias = random.randint(-AI_ERROR_PX, AI_ERROR_PX)
 
-    def vx_from_vy(self, vy_frac):
-        s2 = self.ball_speed_q * self.ball_speed_q
+    def vx_from_vy(self, vy_frac, speed_q):
+        s2 = speed_q * speed_q
         vx2 = max(0, s2 - vy_frac * vy_frac)
-        return int(math.sqrt(vx2)) or (self.ball_speed_q // 2)
+        return int(math.sqrt(vx2)) or (speed_q // 2)
+
+    def velocidade_saida(self):
+        # velocidade de saida de uma rebatida, turbinada ou nao (ver config.h:
+        # acima de TURBO_MAX_Q a bola atravessa a raquete)
+        if self.turbo_frames <= 0:
+            return self.ball_speed_q
+        return min(self.ball_speed_q + TURBO_EXTRA_Q, TURBO_MAX_Q)
 
     def p2_label(self):
         return "CPU" if self.mode == MODE_ARCADE else "P2"
@@ -743,6 +866,7 @@ class Game:
         self.ball_x = self.phase.serve_x(direction) << 8
         self.ball_y = self.phase.serve_y() << 8
         self.ball_speed_q = BALL_SPEED_INIT_Q
+        self.turbo_frames = 0
         self.last_hitter = -1
         self.roll_ai_bias()
         if self.phase.flags & PF_GRAVITY:
@@ -751,13 +875,14 @@ class Game:
             return
         r = random.randint(0, 255) - 128
         vy_frac = (r * self.ball_speed_q) // 256
-        self.ball_vx = direction * self.vx_from_vy(vy_frac)
+        self.ball_vx = direction * self.vx_from_vy(vy_frac, self.ball_speed_q)
         self.ball_vy = vy_frac
 
     def reset_round(self, scorer):
         mid = self.phase.paddle_range() // 2
         self.paddle_pos = [mid, mid]
         self.paddle_travado = [False, False]
+        self.aviso_frames = 0
         self.phase.round_reset()
         self.serve_ball(+1 if scorer == 1 else -1)
 
@@ -850,8 +975,11 @@ class Game:
         offset = by - seg_center
         if self.ball_speed_q < BALL_SPEED_MAX_Q:
             self.ball_speed_q += BALL_SPEED_STEP_Q
-        vy_frac = (offset * self.ball_speed_q) // max(1, sh)
-        vx_abs = self.vx_from_vy(vy_frac)
+        if self.phase.turbo(player):
+            self.turbo_frames = TURBO_HOLD_FRAMES
+        vel = self.velocidade_saida()
+        vy_frac = (offset * vel) // max(1, sh)
+        vx_abs = self.vx_from_vy(vy_frac, vel)
         self.ball_vx = +vx_abs if player == 0 else -vx_abs
         self.ball_vy = vy_frac
         self.roll_ai_bias()
@@ -876,6 +1004,16 @@ class Game:
     def physics(self):
         f = self.phase.flags
         prev = (self.ball_x, self.ball_y, self.ball_vx, self.ball_vy)
+
+        # fim do pique do turbo: a bola volta ao normal mantendo a direcao
+        if self.turbo_frames > 0:
+            vel = self.velocidade_saida()
+            self.turbo_frames -= 1
+            if self.turbo_frames == 0 and vel > 0:
+                vy = (self.ball_vy * self.ball_speed_q) // vel
+                vx = self.vx_from_vy(vy, self.ball_speed_q)
+                self.ball_vy = vy
+                self.ball_vx = -vx if self.ball_vx < 0 else vx
         if f & PF_GRAVITY:
             self.ball_vy = min(BALL_VY_MAX_Q, self.ball_vy + GRAVITY_Q)
         self.ball_x += self.ball_vx
@@ -887,6 +1025,7 @@ class Game:
         if self.ball_y > max_y:
             if f & PF_FLOOR_SCORES:
                 cx = (self.ball_x >> 8) + BALL_SIZE // 2
+                self.ball_y = FB_H << 8      # some da tela antes de congelar
                 self.add_point(1 if cx < FB_W // 2 else 0)
                 return
             self.ball_y = max_y; self.ball_vy = -self.ball_vy
@@ -1068,6 +1207,10 @@ class Game:
     def draw_play(self):
         self.fb.clear(0)
         self.draw_field(); self.draw_scores(); self.draw_paddles(); self.draw_ball()
+        if self.aviso_frames > 0:
+            text_boxed_at(self.fb, self.glyphs,
+                          3 * FB_W // 4 if self.aviso_jogador == 1 else FB_W // 4,
+                          40, BONUS_NOMES.get(self.aviso_tipo, ""), 1)
 
     def draw_round_end(self):
         self.draw_play()
@@ -1278,12 +1421,18 @@ class Game:
             self.update_paddles()
             self.physics()
             if self.state == GS_PLAY:
-                bonus = self.phase.update(self.ball_x, self.ball_y,
-                                          self.paddle_pos, self.last_hitter)
+                b = self.phase.update(self.ball_x, self.ball_y,
+                                      self.paddle_pos, self.last_hitter)
                 for p in (0, 1):
-                    if bonus[p]:
-                        self.total_score[p] += bonus[p]   # so no total geral
+                    if b["pontos"][p]:
+                        self.total_score[p] += b["pontos"][p]  # so no total
                         self.total_flash[p] = TOTAL_FLASH_FRAMES
+                if b["tipo"] >= 0:
+                    self.aviso_tipo = b["tipo"]
+                    self.aviso_jogador = b["jogador"]
+                    self.aviso_frames = BONUS_AVISO_FRAMES
+            if self.aviso_frames > 0:
+                self.aviso_frames -= 1
             self.draw_play()
 
         elif self.state == GS_PAUSE:

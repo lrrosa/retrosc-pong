@@ -44,6 +44,8 @@ static int last_winner;           // 0 = empate, 1 ou 2 ao terminar a partida
 static bool arcade_perdeu;        // no arcade, a CPU fechou uma fase: acabou
 static int ai_bias;               // erro de mira da CPU, sorteado a cada rebatida
 static int total_flash[2];        // frames restantes do total piscando (bonus)
+static int turbo_frames;          // pique de bola rapida que ainda falta (BONUS_TURBO)
+static int aviso_tipo, aviso_jogador, aviso_frames;   // aviso do bonus na tela
 
 // Estado da entrada de iniciais
 static char initials_buf[INITIALS_LEN + 1];
@@ -72,20 +74,30 @@ static void roll_ai_bias(void) {
 
 // Raiz quadrada inteira por busca crescente: so roda com valores pequenos
 // (velocidade da bola em Q8) e evita puxar a libm para dentro do binario.
-static int32_t vx_from_vy(int32_t vy_frac) {
-    int32_t s2  = ball_speed_q * ball_speed_q;
+static int32_t vx_from_vy(int32_t vy_frac, int32_t speed_q) {
+    int32_t s2  = speed_q * speed_q;
     int32_t vx2 = s2 - vy_frac * vy_frac;
     if (vx2 < 0) vx2 = 0;
-    for (int32_t g = (ball_speed_q >> 2); g <= ball_speed_q; g++) {
+    for (int32_t g = (speed_q >> 2); g <= speed_q; g++) {
         if (g * g >= vx2) return g;
     }
-    return ball_speed_q >> 1;
+    return speed_q >> 1;
+}
+
+// Velocidade com que a bola sai de uma rebatida: a normal, ou a turbinada
+// enquanto durar o pique do BONUS_TURBO. O teto TURBO_MAX_Q nao e estetico --
+// acima dele a bola atravessa a raquete sem tocar nela (ver config.h).
+static int32_t velocidade_saida(void) {
+    if (turbo_frames <= 0) return ball_speed_q;
+    int32_t v = ball_speed_q + TURBO_EXTRA_Q;
+    return (v > TURBO_MAX_Q) ? TURBO_MAX_Q : v;
 }
 
 static void serve_ball(int direction /* -1 ou +1 */) {
     ball_x = phase_serve_x(direction) << 8;
     ball_y = phase_serve_y() << 8;
     ball_speed_q = BALL_SPEED_INIT_Q;
+    turbo_frames = 0;
     last_hitter = -1;
     roll_ai_bias();
 
@@ -98,7 +110,7 @@ static void serve_ball(int direction /* -1 ou +1 */) {
     // angulo aleatorio: vy entre -0.5 e +0.5 da velocidade
     int32_t r = (int32_t)(get_rand_32() & 0xFF) - 128;     // -128..127
     int32_t vy_frac = (r * ball_speed_q) / 256;
-    ball_vx = direction * vx_from_vy(vy_frac);
+    ball_vx = direction * vx_from_vy(vy_frac, ball_speed_q);
     ball_vy = vy_frac;
 }
 
@@ -107,6 +119,7 @@ static void reset_round(int scorer) {
     paddle_pos[0] = mid;
     paddle_pos[1] = mid;
     paddle_travado[0] = paddle_travado[1] = false;
+    aviso_frames = 0;
     phase_round_reset();
     // bola sai em direcao a quem perdeu o ponto
     int dir = (scorer == 1) ? +1 : -1;
@@ -249,9 +262,14 @@ static void on_paddle_hit(int player, const rect_t *seg) {
     int offset = by - seg_center;
 
     if (ball_speed_q < BALL_SPEED_MAX_Q) ball_speed_q += BALL_SPEED_STEP_Q;
+    // Turbo: cada toque de quem pegou o bonus relanca o pique de bola rapida.
+    // Passado o pique ela desacelera sozinha e so acelera no proximo toque
+    // dele -- por isso o cronometro do pique fica aqui e o dos 10 s na fase.
+    if (phase_turbo(player)) turbo_frames = TURBO_HOLD_FRAMES;
 
-    int32_t vy_frac = (offset * ball_speed_q) / (seg->h ? seg->h : 1);
-    int32_t vx_abs  = vx_from_vy(vy_frac);
+    int32_t vel     = velocidade_saida();
+    int32_t vy_frac = (offset * vel) / (seg->h ? seg->h : 1);
+    int32_t vx_abs  = vx_from_vy(vy_frac, vel);
     ball_vx = (player == 0) ? +vx_abs : -vx_abs;
     ball_vy = vy_frac;
     roll_ai_bias();
@@ -285,6 +303,18 @@ static void physics(void) {
     uint32_t f = phase_flags();
     int32_t prev_x = ball_x, prev_y = ball_y;
 
+    // Fim do pique do turbo: a bola volta a velocidade normal mantendo a
+    // direcao. Sem reescalar aqui ela so desaceleraria na proxima rebatida.
+    if (turbo_frames > 0) {
+        int32_t vel = velocidade_saida();
+        if (--turbo_frames == 0 && vel > 0) {
+            int32_t vy = (ball_vy * ball_speed_q) / vel;
+            int32_t vx = vx_from_vy(vy, ball_speed_q);
+            ball_vy = vy;
+            ball_vx = (ball_vx < 0) ? -vx : +vx;
+        }
+    }
+
     if (f & PF_GRAVITY) {
         ball_vy += GRAVITY_Q;
         if (ball_vy > BALL_VY_MAX_Q) ball_vy = BALL_VY_MAX_Q;
@@ -300,6 +330,10 @@ static void physics(void) {
     if (ball_y > max_y) {
         if (f & PF_FLOOR_SCORES) {
             int cx = (ball_x >> 8) + BALL_SIZE / 2;
+            // Tira a bola da tela antes de pontuar: o GS_ROUND_END congela o
+            // quadro, e parada em cima do chao ela ficava com uma tira de
+            // pixels aparecendo na borda de baixo.
+            ball_y = (int32_t)FB_HEIGHT << 8;
             add_point((cx < FB_WIDTH / 2) ? 1 : 0);
             return;
         }
@@ -376,13 +410,20 @@ static void right_text(int x_right, int y, const char *s, int scale) {
 
 // Texto centralizado com um retangulo preto por tras: sobre os tijolos das
 // barreiras ou os obstaculos do pinball, texto branco sozinho some.
-static void center_text_boxed(int y, const char *s, int scale) {
+// Texto com fundo preto centrado em 'cx', aparado nas bordas da tela.
+static void text_boxed_at(int cx, int y, const char *s, int scale) {
     const int margem = 4;
     int w = gfx_text_width(s, scale);
     int h = FONT_H * scale;
-    int x = (FB_WIDTH - w) / 2;
+    int x = cx - w / 2;
+    if (x < margem) x = margem;
+    if (x > FB_WIDTH - w - margem) x = FB_WIDTH - w - margem;
     gfx_fill_rect(x - margem, y - margem, w + 2 * margem, h + 2 * margem, 0);
     gfx_text(x, y, s, scale, 1);
+}
+
+static void center_text_boxed(int y, const char *s, int scale) {
+    text_boxed_at(FB_WIDTH / 2, y, s, scale);
 }
 
 static const char *p2_label(void) {
@@ -554,6 +595,12 @@ static void draw_play(void) {
     draw_scores();
     draw_paddles();
     draw_ball();
+    // Qual bonus saiu, do lado de quem pegou: com cinco tipos o total piscando
+    // ja nao diz o que aconteceu. Fica abaixo do placar e fora do meio da
+    // quadra, onde as fases de barreira tem tijolo.
+    if (aviso_frames > 0)
+        text_boxed_at((aviso_jogador == 1) ? (3 * FB_WIDTH / 4) : (FB_WIDTH / 4),
+                      40, bonus_nome(aviso_tipo), 1);
 }
 
 static void draw_round_end(void) {
@@ -902,18 +949,25 @@ static void frame_play(void) {
     update_paddles();
     physics();
 
-    // Bichos da fase: a nave paga pontos extras a quem acertou -- so no total
-    // geral, sem mexer no placar da fase.
+    // Bichos da fase: o mascote paga um bonus sorteado a quem acertou. Quando
+    // ele e de pontos, vai so para o total geral, sem mexer no placar da fase;
+    // os outros quatro sao efeitos cronometrados dentro da propria fase.
     if (state == GS_PLAY) {
-        int bonus[2];
-        phase_update(ball_x, ball_y, paddle_pos, last_hitter, bonus);
+        bonus_out_t b;
+        phase_update(ball_x, ball_y, paddle_pos, last_hitter, &b);
         for (int p = 0; p < 2; p++) {
-            if (bonus[p] <= 0) continue;
-            total_score[p] += bonus[p];
+            if (b.pontos[p] <= 0) continue;
+            total_score[p] += b.pontos[p];
             total_flash[p]  = TOTAL_FLASH_FRAMES;
+        }
+        if (b.tipo >= 0) {
+            aviso_tipo    = b.tipo;
+            aviso_jogador = b.jogador;
+            aviso_frames  = BONUS_AVISO_FRAMES;
             audio_confirm();
         }
     }
+    if (aviso_frames > 0) aviso_frames--;
     draw_play();
 }
 

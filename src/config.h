@@ -113,6 +113,29 @@
 #define BONUS_POINTS        3                       // pontos, so no total geral
 #define TOTAL_FLASH_FRAMES 90                     // total piscando apos o bonus
 
+// Acertar o mascote sorteia um dos cinco bonus de bonus_tipo_t. O de pontos e
+// instantaneo; os outros quatro duram BONUS_EFEITO_FRAMES e vao para quem
+// rebateu a bola por ultimo -- inclusive a CPU, que joga com as mesmas armas.
+#define BONUS_EFEITO_FRAMES (10 * 60)             // 10 s de efeito
+#define BONUS_AVISO_FRAMES  120                   // 2 s com o nome do bonus na tela
+#define PADDLE_H_BIG       (PADDLE_H * 3 / 2)     // raquete aumentada: 36 px
+#define TRIPLE_SEG_H_BIG   (TRIPLE_SEG_H * 3 / 2) // no TRIPLO cada pedaco cresce igual
+// Escudo: coluna de tijolos quebraveis na frente do proprio gol, com vaos por
+// onde a bola ainda passa -- ESCUDO_CHEIO fileiras de tijolo a cada
+// ESCUDO_PERIODO, ou seja, 24 px de muro e 8 px de vao.
+#define ESCUDO_PERIODO      4
+#define ESCUDO_CHEIO        3
+// Turbo: enquanto o bonus durar, cada toque de quem o pegou lanca a bola
+// acelerada por TURBO_HOLD_FRAMES; passado esse tempo ela volta sozinha a
+// velocidade normal e so acelera de novo no proximo toque dele.
+#define TURBO_HOLD_FRAMES   90                    // 1,5 s de bola rapida por toque
+#define TURBO_EXTRA_Q      0x180                  // +1,5 px/frame
+// TETO DURO, nao estetico: a colisao com a raquete e com o tijolo e por
+// sobreposicao no instante, sem varredura. Com bola e raquete de 3 px, a bola
+// atravessa a raquete sem tocar nela a partir de 6 px/frame; o tijolo de 4 px,
+// a partir de 7. A bola turbinada tem que ficar abaixo dos 6.
+#define TURBO_MAX_Q        0x580                  // 5,5 px/frame
+
 // Fase NAVE: a nave sobe e desce no meio da quadra atirando; o tiro que pega a
 // raquete deixa ela pela metade por SHRINK_FRAMES. A bola tambem rebate nela,
 // entao e obstaculo movel e atirador ao mesmo tempo. O desenho e o mesmo

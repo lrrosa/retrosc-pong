@@ -38,12 +38,24 @@ máquina arcade do evento [**RetroSC**](https://retrosc.org/).
 
   Nas três barreiras o estrago fica até o fim da fase: quando abre um vão de
   ponta a ponta, aquela fase volta a ser um pong normal.
-- **Mascote-bônus**: em algumas fases (as que têm a quadra mais limpa) o
+- **Mascote-bônus**: em quatro fases — **1 (clássico), 2 (triplo), 4 (barreira I)
+  e 8 (muralha)**, as que têm o meio da quadra livre — o
   mascote da RetroSC cruza a tela na diagonal — às vezes de cima para baixo,
   às vezes de baixo para cima — com a palavra **BONUS** piscando ao lado. Ele
-  passa **no máximo duas vezes por fase**, e acertá-lo com a bola vale
-  **3 pontos no total geral** de quem rebateu por último; o placar da fase não
-  muda, e o total fica piscando um instante para o jogador perceber.
+  passa **no máximo duas vezes por fase**, e acertá-lo com a bola dá um prêmio
+  **sorteado na hora** para quem rebateu por último — o nome dele aparece por
+  2 s do lado de quem levou. A CPU joga com as mesmas armas:
+
+  | prêmio | o que faz |
+  | --- | --- |
+  | **BONUS +3** | 3 pontos **só no total geral** — o placar da fase não muda, e o total pisca um instante |
+  | **RAQUETE MAIOR** | a sua raquete cresce 50% por 10 s |
+  | **ENCOLHEU O RIVAL** | a raquete do adversário fica pela metade por 10 s |
+  | **ESCUDO** | um muro de tijolos quebráveis aparece na frente do seu gol por 10 s; ele tem vãos por onde a bola ainda passa, some tijolo a tijolo e pisca no último segundo |
+  | **TURBO** | por 10 s, cada bola que **você** rebate sai acelerada; ela volta ao normal sozinha depois de 1,5 s e só acelera de novo no seu próximo toque |
+
+  Os quatro efeitos temporizados contam 10 s de **jogo** e atravessam o ponto:
+  quem ganha no fim de um rali leva o resto do tempo para o seguinte.
 - **Pausa**: apertar o SELETOR durante a partida abre *CONTINUAR* / *SAIR DO
   JOGO*. A escolha anda pelo **movimento** do pot (não pela posição dele), então
   o menu sempre abre em *CONTINUAR*; o SELETOR confirma e sair volta ao attract.
@@ -353,7 +365,12 @@ Tudo importante está em [`src/config.h`](src/config.h):
 - `BRICK_W`, `BRICK_H`, `TRIPLE_SEG_H`, `TRIPLE_GAP` — geometria das fases
 - `BONUS_*` — o mascote-bônus: velocidade, inclinação, faixa horizontal, o
   intervalo sorteado entre passagens (`BONUS_WAIT_MIN/RANGE`), quantas vezes
-  ele passa por fase (`BONUS_PASSES_MAX`) e quanto vale (`BONUS_POINTS`)
+  ele passa por fase (`BONUS_PASSES_MAX`), quanto vale o prêmio de pontos
+  (`BONUS_POINTS`) e quanto duram os outros quatro (`BONUS_EFEITO_FRAMES`)
+- `PADDLE_H_BIG`, `TRIPLE_SEG_H_BIG`, `ESCUDO_PERIODO/CHEIO`, `TURBO_*` — o
+  tamanho da raquete aumentada, o desenho do escudo e o pique do turbo.
+  `TURBO_MAX_Q` **não é ajuste de gosto**: acima de 6 px/frame a bola atravessa
+  a raquete de 3 px sem tocar nela, porque a colisão é por sobreposição
 - `NAVE_*`, `SHOT_*`, `SHRINK_FRAMES` — a nave da fase 3, seus tiros e quanto
   tempo a raquete atingida fica pela metade
 - `INITIALS_TIMEOUT_S`, `PAUSE_TIMEOUT_S` — os 30 s que cada tela de espera
