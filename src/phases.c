@@ -50,7 +50,6 @@ static int      brick_cols;                     // colunas em uso (0 = sem tijol
 static int      brick_col_x[BRICK_COLS_MAX];    // x da esquerda de cada coluna
 static uint32_t brick_alive[BRICK_COLS_MAX];    // linhas ainda de pe
 static uint32_t brick_start[BRICK_COLS_MAX];    // padrao original da fase
-static bool     brick_rebuild_round;            // rearma os tijolos a cada ponto
 
 // solidos (parados ou moveis)
 static rect_t   solids[SOLID_MAX];
@@ -168,26 +167,23 @@ static void build_barreira(int cols, int gap,
         brick_col_x[c] = x0 + c * step;
         brick_start[c] = mask;
     }
-    brick_rebuild_round = false;
     cur_flags |= PF_NO_CENTER_LINE;
 }
 
-// MURALHA: uma coluna atras de cada raquete, com vaos grandes ja abertos.
-// A bola sempre rebate nos tijolos: so da ponto quem enfia a bola num vao.
-// Aqui os tijolos voltam a cada ponto, senao o gol ficaria escancarado.
+// MURALHA: uma parede atras de cada raquete, com poucos vaos abertos de
+// saida. So marca ponto quem enfiar a bola num vao, e cada bola que passa da
+// raquete quebra mais um tijolo -- o estrago fica ate o fim da fase, como nas
+// barreiras, entao a parede vai se abrindo e a fase acelerando. Um tijolo a
+// menos ja e uma passagem de 8 px, e a bola tem 3.
 static void build_muralha(void) {
     brick_cols = 2;
     brick_col_x[0] = 0;
     brick_col_x[1] = FB_WIDTH - BRICK_W;
     uint32_t mask = 0;
-    for (int r = 0; r < BRICK_ROWS; r++) {
-        // 3 tijolos, 3 vazios: com vao de 24 px a bola (3 px) passa sem ser
-        // sorte grossa. Vaos menores travam a fase (medido no simulador:
-        // vao de 8 px = 34 s por ponto; de 24 px = 16 s por ponto).
-        if ((r % 6) < 2 || (r % 6) > 4) mask |= (1u << r);
-    }
+    for (int r = 0; r < BRICK_ROWS; r++)
+        if ((r % (MURALHA_CHEIOS + MURALHA_VAZIOS)) < MURALHA_CHEIOS)
+            mask |= (1u << r);
     brick_start[0] = brick_start[1] = mask;
-    brick_rebuild_round = true;
 }
 
 // PINBALL: obstaculos fixos espalhados pelo meio da quadra em losango. As
@@ -283,7 +279,6 @@ void phase_begin(int idx) {
     frame_ctr   = 0;
     brick_cols  = 0;
     solid_count = 0;
-    brick_rebuild_round = false;
     nave_reset();
     shrink[0] = shrink[1] = 0;
     efeitos_reset();
@@ -315,8 +310,6 @@ void phase_round_reset(void) {
     for (int i = 0; i < NAVE_SHOT_MAX; i++) shots[i].on = false;
     nave_reset();
     bonus_sleep();
-    if (!brick_rebuild_round) return;
-    for (int c = 0; c < brick_cols; c++) brick_alive[c] = brick_start[c];
 }
 
 // =============================================================
@@ -434,7 +427,11 @@ int phase_paddle_segments(int player, int pos, rect_t *out) {
 // Saque
 // =============================================================
 int phase_serve_x(int dir) {
-    if (brick_cols > 0 && !brick_rebuild_round) {
+    // So vale para as barreiras do MEIO da quadra. Os muros da MURALHA ficam
+    // nas bordas, atras das raquetes: la o saque do centro esta certo, e usar
+    // esta conta colocaria a bola em x negativo, fora da tela, dando ponto no
+    // ato.
+    if (brick_cols > 0 && brick_col_x[0] > FB_WIDTH / 4) {
         // Sair do centro colocaria a bola dentro da barreira: saca do lado de
         // quem vai RECEBER (dir aponta para ele), colado na barreira, para a
         // bola ter a quadra inteira dele pela frente antes de virar gol.
@@ -583,10 +580,14 @@ bool phase_ball_collide(int32_t prev_x, int32_t prev_y,
         bool eixo_x = bounce_off(prev_x, prev_y,
                                  s->x, s->y, s->x + s->w - 1, s->y + s->h - 1,
                                  bx, by, vx, vy);
-        if (cur_phase == PHASE_PINBALL || cur_phase == PHASE_COLUNA) {
+        if (cur_phase == PHASE_PINBALL || cur_phase == PHASE_COLUNA ||
+            cur_phase == PHASE_REBOUND) {
             // Gira o vetor alguns graus para um lado ou para o outro: duas
             // faces paralelas devolvendo a bola sempre no mesmo angulo a
-            // deixavam presa entre dois postes.
+            // deixavam presa entre dois postes. A rede do REBOUND fecha o
+            // mesmo tipo de orbita contra a raquete de quem esta parado --
+            // medido no simulador: 641 idas e vindas entre a raquete e a rede
+            // sem ninguem pontuar, e a fase nunca acabava.
             int32_t giro = (get_rand_32() & 1) ? +1 : -1;
             int32_t saida_x = *vx, saida_y = *vy;
             int32_t nvx = *vx - giro * (*vy >> BUMPER_SPIN_SHIFT);

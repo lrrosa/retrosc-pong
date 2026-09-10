@@ -49,6 +49,8 @@ static int aviso_tipo, aviso_jogador, aviso_frames;   // aviso do bonus na tela
 
 // Estado da entrada de iniciais
 static char initials_buf[INITIALS_LEN + 1];
+static int  initials_letra;       // letra em foco (0..25), com freio
+static int  initials_cool;        // frames que faltam para andar mais uma
 static int  initials_slot;
 static bool initials_armed;       // se ja iniciou o processo
 static int  initials_player;      // quem digita (1 ou 2)
@@ -68,8 +70,22 @@ static void set_state(game_state_t s) {
     state_timer = 0;
 }
 
+// Interpola em linha reta entre o valor da primeira fase e o da ultima. E o
+// unico lugar que decide o quanto a CPU melhora ao longo do jogo.
+static int ai_curva(int primeira, int ultima) {
+    int n = PHASE_COUNT - 1;
+    int i = phase_idx;
+    if (i < 0) i = 0;
+    if (i > n) i = n;
+    return (n > 0) ? (primeira + (ultima - primeira) * i / n) : ultima;
+}
+
+static int ai_speed(void) { return ai_curva(AI_SPEED_MIN, AI_SPEED_MAX); }
+static int ai_error(void) { return ai_curva(AI_ERROR_MAX_PX, AI_ERROR_MIN_PX); }
+
 static void roll_ai_bias(void) {
-    ai_bias = (int)(get_rand_32() % (2 * AI_ERROR_PX + 1)) - AI_ERROR_PX;
+    int e = ai_error();
+    ai_bias = (int)(get_rand_32() % (2 * e + 1)) - e;
 }
 
 // Raiz quadrada inteira por busca crescente: so roda com valores pequenos
@@ -206,7 +222,7 @@ static void update_paddle_ai(int player) {
     if (!coming) target = range / 2;           // sem bola vindo, volta ao centro
 
     int diff  = target - paddle_pos[player];
-    int speed = AI_PADDLE_SPEED + phase_idx / 3;   // fases seguintes: CPU melhor
+    int speed = ai_speed();
     if (abs_i(diff) > speed) diff = (diff > 0) ? speed : -speed;
     paddle_pos[player] += diff;
     if (paddle_pos[player] < 0)     paddle_pos[player] = 0;
@@ -217,6 +233,12 @@ static void update_paddle_ai(int player) {
 // estiver longe de onde a raquete parou, a raquete nao se mexe.
 static void update_paddle_humano(int player, int range) {
     int lido = input_paddle_y(player, range);
+    // No volei o pot manda no eixo X, e X cresce para a direita enquanto Y
+    // cresce para BAIXO. Alimentar os dois com o mesmo sinal faz o mesmo giro
+    // do botao parecer certo numa fase e invertido na outra -- um dos eixos tem
+    // que ser espelhado, e o espelhado e este, porque as outras nove fases sao
+    // a referencia do jogador.
+    if (phase_flags() & PF_PADDLE_HORIZ) lido = range - lido;
     if (paddle_travado[player]) {
         if (abs_i(lido - paddle_pos[player]) <= PADDLE_TAKEOVER_TOL)
             paddle_travado[player] = false;
@@ -542,10 +564,14 @@ static void draw_menu(void) {
         }
     }
 
-    center_text(by + bh + 5,
-                (menu_sel == MODE_ARCADE) ? "1 JOGADOR CONTRA A CPU"
-                                          : "2 JOGADORES",
-                1);
+    // Fundo preto: a linha central pontilhada da quadra do demo desce ate
+    // FB_HEIGHT-12 e cruza esta legenda. Como as duas sao centradas, o traco
+    // caia sempre na letra do meio da frase -- em "2 JOGADORES" era o A, que
+    // aparecia com o vao interno preenchido e um pixel solto logo acima.
+    center_text_boxed(by + bh + 5,
+                      (menu_sel == MODE_ARCADE) ? "1 JOGADOR CONTRA A CPU"
+                                                : "2 JOGADORES",
+                      1);
     if (((state_timer >> 4) & 1) == 0) {
         center_text(FB_HEIGHT - 9, "SELETOR CONFIRMA", 1);
     }
@@ -733,12 +759,19 @@ static void draw_highscores(void) {
 // =============================================================
 // Tela de entrada de iniciais (3 letras, controlado pelo vencedor)
 // =============================================================
-static char letter_for_pot(int pot_val) {
-    // 0..4095 -> 0..25 (A..Z)
+// Letra que o pot esta apontando, com a banda da letra ATUAL alargada para os
+// dois lados: so troca quem sair dela de verdade.
+static int letra_do_pot(int pot_val, int atual) {
+    const int larg = 4096 / 26;                  // 157 contagens por letra
+    if (atual >= 0 && atual <= 25) {
+        int lo = atual * larg - INITIALS_HIST;
+        int hi = (atual + 1) * larg + INITIALS_HIST;
+        if (pot_val >= lo && pot_val < hi) return atual;
+    }
     int idx = (pot_val * 26) / 4096;
     if (idx < 0) idx = 0;
     if (idx > 25) idx = 25;
-    return (char)('A' + idx);
+    return idx;
 }
 
 static void draw_enter_initials(void) {
@@ -1029,17 +1062,28 @@ static void frame_enter_initials(void) {
         initials_buf[2] = 0;
         initials_buf[3] = 0;
         initials_slot = 0;
+        initials_letra = letra_do_pot(input_pot_raw(initials_player - 1), -1);
+        initials_cool = 0;
         initials_armed = true;
     }
 
     if (initials_slot < INITIALS_LEN) {
         int pot = input_pot_raw(initials_player - 1);
-        char c = letter_for_pot(pot);
-        initials_buf[initials_slot] = c;
+        int alvo = letra_do_pot(pot, initials_letra);
+        // Anda no maximo uma letra por vez, e so a cada INITIALS_STEP_FRAMES:
+        // girar depressa vira rolagem, nao salto.
+        if (initials_cool > 0) {
+            initials_cool--;
+        } else if (alvo != initials_letra) {
+            initials_letra += (alvo > initials_letra) ? +1 : -1;
+            initials_cool = INITIALS_STEP_FRAMES;
+        }
+        initials_buf[initials_slot] = (char)('A' + initials_letra);
 
         if (input_seletor_pressed()) {
             audio_attract_tick();
             initials_slot++;
+            initials_cool = 0;
         }
     } else {
         grava_iniciais();

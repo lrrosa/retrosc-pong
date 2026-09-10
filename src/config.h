@@ -57,7 +57,14 @@
 
 // ===== Audio =====
 #define AUDIO_SAMPLE_RATE 22050
-#define PWM_TOP           1023               // 10-bit PWM
+// O PWM do audio e usado como gerador de tom (onda quadrada de 50%), entao a
+// resolucao de duty nao importa -- o que importa e ate onde ele desce em
+// frequencia. A nota sai em sysclk/(clkdiv * (TOP+1)) e o clkdiv para em 255,
+// entao com TOP de 10 bits o mais grave possivel eram 478 Hz: a raquete
+// (226 Hz) e a parede (246 Hz), os dois sons mais tocados do jogo, saiam ambos
+// grudados nesse fundo, iguais entre si e emendando um no outro. Com 12 bits o
+// piso cai para 120 Hz e cada som volta para a nota pedida.
+#define PWM_TOP           4095               // 12-bit: alcanca as notas graves
 
 // ===== Jogo =====
 #define PHASE_WIN_SCORE   9                  // pontos para vencer UMA fase
@@ -73,7 +80,18 @@
 // Nenhuma tela de espera pode ficar parada para sempre num arcade: passados
 // esses segundos, a de iniciais grava o que foi digitado e a pausa aplica a
 // opcao destacada.
-#define INITIALS_TIMEOUT_S 30
+// A das iniciais e generosa de proposito: digitar 3 letras girando um pot leva
+// tempo, e na maquina real 30 s cortavam o jogador no meio do nome.
+#define INITIALS_TIMEOUT_S 60
+// A letra segue a posicao do pot, mas com freio. O alfabeto inteiro cabe no
+// curso do pot, o que da ~10 graus por letra: sem freio, um esbarrao no botao
+// passa cinco letras de uma vez e a letra desejada fica para tras. A banda da
+// letra atual e alargada em INITIALS_HIST contagens para cada lado (histerese,
+// que tambem impede o pisca-pisca na fronteira entre duas) e a mudanca anda no
+// maximo uma letra a cada INITIALS_STEP_FRAMES, o que transforma um giro rapido
+// numa rolagem legivel em vez de um borrao.
+#define INITIALS_STEP_FRAMES 6
+#define INITIALS_HIST        78                  // metade da banda de uma letra
 #define PAUSE_TIMEOUT_S    30
 // Na pausa a escolha anda pelo MOVIMENTO do pot, nao pela posicao dele: o item
 // inicial tem que ser sempre CONTINUAR, senao um pot parado embaixo abriria a
@@ -92,6 +110,13 @@
 #define BRICK_H           8
 #define BRICK_ROWS        (FB_HEIGHT / BRICK_H)   // 24 linhas
 
+// MURALHA: a parede nasce com alguns vaos ja abertos -- MURALHA_CHEIOS fileiras
+// de tijolo para cada MURALHA_VAZIOS de passagem. Fechada de todo a fase ficava
+// arrastada (medido: 336 s contra 258 s assim), e vaos de 16 px sao folgados
+// para a bola de 3 px sem deixar de ser uma parede: sobram 60% dela de pe.
+#define MURALHA_CHEIOS    3
+#define MURALHA_VAZIOS    2
+
 // Fase TRIPLO: cada raquete vira 3 pedacos de PADDLE_H/3 separados por um vao.
 #define TRIPLE_SEG_H      (PADDLE_H / 3)          // 8 px por pedaco
 #define TRIPLE_GAP        8                       // vao entre os pedacos
@@ -102,9 +127,14 @@
 // BONUS_POINTS pontos, so no total geral, a quem rebateu a bola por ultimo.
 #define BONUS_W            16                     // = RETROSC_MASCOTE_W
 #define BONUS_H            16
-#define BONUS_VY_Q         0x0C0                   // 0,75 px/frame na vertical
-#define BONUS_VX_MIN_Q     0x040                   // inclinacao minima (0,25 px/frame)
-#define BONUS_VX_MAX_Q     0x0C0                   // inclinacao maxima (0,75 px/frame)
+// Devagar de proposito: o mascote e alvo, nao obstaculo. Cada ponto marcado o
+// tira da tela (phase_round_reset -> bonus_sleep), entao quem limita a chance
+// de acerta-lo e a duracao do ponto, nao a travessia inteira -- medido no
+// simulador, cair de 0,75 para 0,375 px/frame levou a passagem de 3,2 s para
+// 4,6 s na tela e o acerto de 18% para 26% das passagens.
+#define BONUS_VY_Q         0x060                   // 0,375 px/frame na vertical
+#define BONUS_VX_MIN_Q     0x020                   // inclinacao minima (0,125 px/frame)
+#define BONUS_VX_MAX_Q     0x060                   // inclinacao maxima (0,375 px/frame)
 #define BONUS_X_MIN        40                      // faixa horizontal onde ela anda
 #define BONUS_X_MAX        (FB_WIDTH - 40 - BONUS_W)
 #define BONUS_WAIT_MIN     (4 * 60)                // 4 s de intervalo, no minimo
@@ -117,7 +147,7 @@
 // instantaneo; os outros quatro duram BONUS_EFEITO_FRAMES e vao para quem
 // rebateu a bola por ultimo -- inclusive a CPU, que joga com as mesmas armas.
 #define BONUS_EFEITO_FRAMES (10 * 60)             // 10 s de efeito
-#define BONUS_AVISO_FRAMES  120                   // 2 s com o nome do bonus na tela
+#define BONUS_AVISO_FRAMES  240                   // 4 s com o nome do bonus na tela
 #define PADDLE_H_BIG       (PADDLE_H * 3 / 2)     // raquete aumentada: 36 px
 #define TRIPLE_SEG_H_BIG   (TRIPLE_SEG_H * 3 / 2) // no TRIPLO cada pedaco cresce igual
 // Escudo: coluna de tijolos quebraveis na frente do proprio gol, com vaos por
@@ -187,10 +217,20 @@
 #define VOLLEY_VX_SPREAD_Q 0x140                  // alcance a mais/menos pela borda
 
 // ===== CPU (modo arcade) =====
-#define AI_PADDLE_SPEED   3                  // px/frame que a CPU consegue mover
+// A CPU melhora fase a fase, em linha reta entre os dois extremos (ai_curva()
+// em game.c): na primeira ela e lenta e mira mal de proposito, que e a fase que
+// ensina o jogo, e na ultima ela e rapida e erra pouco.
+#define AI_SPEED_MIN      3                  // px/frame na primeira fase
+#define AI_SPEED_MAX      7                  // px/frame na ultima
 // O erro precisa ser MAIOR que a meia-raquete (PADDLE_H/2), senao a CPU so
 // erra a mira e ainda assim rebate de quina -- ou seja, nunca perde um ponto.
-#define AI_ERROR_PX       26                 // erro de mira sorteado a cada rebatida
+// O erro de mira e sorteado a cada rebatida. O extremo dificil NAO pode chegar
+// perto de meia raquete (PADDLE_H/2 = 12 px): abaixo disso a bola cai sempre em
+// cima da raquete e a CPU simplesmente nao erra mais -- medido no simulador,
+// com 12 px uma fase passava de 10 minutos, e no arcade isso significa o
+// jogador perdendo a primeira fase que a CPU jogar bem.
+#define AI_ERROR_MAX_PX   26                 // erro na primeira fase
+#define AI_ERROR_MIN_PX   15                 // ... e na ultima
 
 // ===== Highscores =====
 #define HISCORE_COUNT     5

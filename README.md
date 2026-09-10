@@ -27,8 +27,10 @@ máquina arcade do evento [**RetroSC**](https://retrosc.org/).
   6. **BARREIRA II** — 3 muros, agora espaçados entre si;
   7. **COLUNA** — cinco dos mesmos obstáculos, empilhados no meio e subindo e
      descendo juntos;
-  8. **MURALHA** — uma parede de tijolos atrás de cada raquete: só marca ponto
-     quem enfia a bola num dos vãos (a parede se refaz a cada ponto);
+  8. **MURALHA** — uma parede de tijolos atrás de cada raquete, com poucos vãos
+     abertos de saída: só marca ponto quem enfia a bola num deles. Cada bola que
+     passa da raquete derruba mais um tijolo e **o estrago fica até o fim da
+     fase**, então a parede vai se abrindo e a fase acelerando;
   9. **REBOUND** — vôlei: as raquetes deitam no chão e andam na horizontal
      dentro da própria meia-quadra, a bola tem gravidade e o ponto sai quando
      ela toca o chão do lado adversário;
@@ -56,6 +58,10 @@ máquina arcade do evento [**RetroSC**](https://retrosc.org/).
 
   Os quatro efeitos temporizados contam 10 s de **jogo** e atravessam o ponto:
   quem ganha no fim de um rali leva o resto do tempo para o seguinte.
+  O mascote anda devagar de propósito — ele é alvo, não obstáculo. Quem limita
+  a chance de acertá-lo é a duração do ponto, porque **todo ponto marcado o tira
+  da tela**; por isso ele fica ~4,6 s em cena e é acertado em 1 de cada 4
+  passagens.
 - **Pausa**: apertar o SELETOR durante a partida abre *CONTINUAR* / *SAIR DO
   JOGO*. A escolha anda pelo **movimento** do pot (não pela posição dele), então
   o menu sempre abre em *CONTINUAR*; o SELETOR confirma e sair volta ao attract.
@@ -329,7 +335,10 @@ Controles no Wokwi: gire os **potenciômetros** (mouse) para mover as raquetes;
 - **Como a partida acaba**:
   - No **modo arcade** ela termina assim que a CPU fecha uma fase — enquanto
     o jogador vencer, ele avança para a próxima. O placar dele é o total do
-    que fez até ali, e a tela final mostra até que fase chegou.
+    que fez até ali, e a tela final mostra até que fase chegou. **A CPU melhora
+    a cada fase**: a raquete dela fica mais rápida e, sobretudo, a mira vai
+    ficando mais certeira — na primeira fase ela erra de propósito quase
+    metade das bolas, na última quase não sobra folga.
   - No **modo versus** jogam-se as 10 fases e ganha quem tiver o maior total —
     mas a partida encerra antes se um dos dois **não alcançar mais o outro nem
     ganhando tudo o que falta**. A conta usa os pontos ainda em disputa (9 por
@@ -341,7 +350,9 @@ Controles no Wokwi: gire os **potenciômetros** (mouse) para mover as raquetes;
   início e de fim de fase — e, **durante a partida**, abre a pausa.
 - **Iniciais**: se o total entrar no top 5, o jogador insere 3 letras estilo
   arcade — girar o pot rola pelo alfabeto A–Z, apertar o SELETOR confirma a
-  letra atual e passa para a próxima. A tela tem **30 s**: no fim da contagem
+  letra atual e passa para a próxima. A rolagem tem **freio**: no máximo 10
+  letras por segundo, e a letra em foco só troca quando o pot sai da faixa dela
+  com folga, para tremor de mão não mudar nada. A tela tem **60 s**: no fim da contagem
   vale o que já estiver digitado. No modo arcade quem entra no ranking é
   sempre o humano (P1), tenha vencido ou não.
 - **High scores**: depois das iniciais (ou direto, se não entrou no top),
@@ -358,8 +369,18 @@ Tudo importante está em [`src/config.h`](src/config.h):
   quando um dos dois abre vantagem decisiva ela acaba antes. Para uma fila de
   evento, **5 pontos por fase** corta isso quase pela metade sem mudar mais
   nada.
-- `AI_PADDLE_SPEED`, `AI_ERROR_PX` — dificuldade da CPU no modo arcade
-  (velocidade em px/frame e erro de mira sorteado a cada rebatida).
+- Sons (`audio.c`) — rebatida 480 Hz, parede 640 Hz, tijolo 880 Hz e ponto
+  150 Hz. Os três primeiros são **curtos** (17 a 67 ms) de propósito, e é aí que
+  está a pegadinha: **alto-falante muito pequeno não toca beep curto**. Numa TV
+  de 10" as rebatidas simplesmente não saem, embora o ponto (450 ms) saia; numa
+  TV comum ou no amplificador do gabinete, todos aparecem. Se for testar o som,
+  use um alto-falante de verdade antes de mexer nas notas.
+- `AI_SPEED_MIN/MAX`, `AI_ERROR_MAX_PX/MIN_PX` — dificuldade da CPU no modo
+  arcade, interpolada em linha reta entre a primeira fase e a última. Quem manda
+  é o **erro de mira** (sorteado a cada rebatida): abaixo de meia raquete —
+  `PADDLE_H/2`, 12 px — a bola cai sempre em cima dela e a CPU passa a não errar
+  mais nada, então `AI_ERROR_MIN_PX` para em 15. A velocidade quase não muda o
+  resultado: medindo no simulador, a raquete da CPU chega a ~1 px de onde mirou.
 - `BALL_SPEED_*` — física da bola
 - `PADDLE_W`, `PADDLE_H`, `BALL_SIZE` — visual
 - `BRICK_W`, `BRICK_H`, `TRIPLE_SEG_H`, `TRIPLE_GAP` — geometria das fases
@@ -373,8 +394,12 @@ Tudo importante está em [`src/config.h`](src/config.h):
   a raquete de 3 px sem tocar nela, porque a colisão é por sobreposição
 - `NAVE_*`, `SHOT_*`, `SHRINK_FRAMES` — a nave da fase 3, seus tiros e quanto
   tempo a raquete atingida fica pela metade
-- `INITIALS_TIMEOUT_S`, `PAUSE_TIMEOUT_S` — os 30 s que cada tela de espera
-  aguarda antes de decidir sozinha
+- `INITIALS_TIMEOUT_S`, `PAUSE_TIMEOUT_S` — o tempo que cada tela de espera
+  aguarda antes de decidir sozinha: 60 s para digitar as iniciais (girar o pot
+  até as 3 letras leva tempo) e 30 s na pausa
+- `PWM_TOP` — resolução do PWM de áudio. É ela que fixa a **nota mais grave**
+  possível, em `sysclk / (255 · (PWM_TOP+1))`; abaixo disso o som sai na nota
+  errada, porque o divisor do PWM satura
 - `BUMPER_*`, `COL_*`, `BUMPER_SPIN_SHIFT` — os obstáculos do pinball e da
   coluna móvel, e o quanto cada rebote neles gira a bola (o que impede que ela
   entre em vaivém eterno entre dois postes)

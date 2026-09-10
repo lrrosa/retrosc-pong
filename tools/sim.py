@@ -49,7 +49,9 @@ BALL_SPEED_MAX_Q  = 0x500
 BALL_SPEED_STEP_Q = 0x020
 ATTRACT_TIMEOUT_S = 20
 MENU_TIMEOUT_S    = 15
-INITIALS_TIMEOUT_S = 30
+INITIALS_TIMEOUT_S = 60
+INITIALS_STEP_FRAMES = 6
+INITIALS_HIST        = 78
 PAUSE_TIMEOUT_S   = 30
 PAUSE_POT_STEP    = 400
 PADDLE_TAKEOVER_TOL = 6
@@ -61,13 +63,15 @@ FONT_CELL_H       = 8
 BRICK_W           = 4
 BRICK_H           = 8
 BRICK_ROWS        = FB_H // BRICK_H
+MURALHA_CHEIOS    = 3
+MURALHA_VAZIOS    = 2
 TRIPLE_SEG_H      = PADDLE_H // 3
 TRIPLE_GAP        = 8
 
 BONUS_W, BONUS_H    = 16, 16      # o mascote
-BONUS_VY_Q         = 0x0C0
-BONUS_VX_MIN_Q     = 0x040
-BONUS_VX_MAX_Q     = 0x0C0
+BONUS_VY_Q         = 0x060
+BONUS_VX_MIN_Q     = 0x020
+BONUS_VX_MAX_Q     = 0x060
 BONUS_X_MIN        = 40
 BONUS_X_MAX        = FB_W - 40 - BONUS_W
 BONUS_WAIT_MIN     = 4 * 60
@@ -83,7 +87,7 @@ BONUS_NOMES = {BONUS_PONTOS: "BONUS +3", BONUS_RAQUETE: "RAQUETE MAIOR",
                BONUS_ENCOLHE: "ENCOLHEU O RIVAL", BONUS_ESCUDO: "ESCUDO",
                BONUS_TURBO: "TURBO"}
 BONUS_EFEITO_FRAMES = 10 * 60
-BONUS_AVISO_FRAMES  = 120
+BONUS_AVISO_FRAMES  = 240
 PADDLE_H_BIG        = PADDLE_H * 3 // 2
 TRIPLE_SEG_H_BIG    = TRIPLE_SEG_H * 3 // 2
 ESCUDO_PERIODO      = 4
@@ -123,8 +127,10 @@ VOLLEY_VY_Q       = 0x4C0
 VOLLEY_VX_BASE_Q   = 0x1C0
 VOLLEY_VX_SPREAD_Q = 0x140
 
-AI_PADDLE_SPEED   = 3
-AI_ERROR_PX       = 26
+AI_SPEED_MIN      = 3
+AI_SPEED_MAX      = 7
+AI_ERROR_MAX_PX   = 26
+AI_ERROR_MIN_PX   = 15
 
 DEMO_PADDLE_Y_MIN = 116
 
@@ -188,7 +194,6 @@ class Phase:
         self.col_x = []
         self.start = []
         self.solids = []
-        self.rebuild_round = False
         self.frame_ctr = 0
         self.bonus_on = False
         self.bonus_x_q = self.bonus_y_q = 0
@@ -265,13 +270,13 @@ class Phase:
         self.flags |= PF_NO_CENTER_LINE
 
     def _muralha(self):
+        # parede inteira, e o estrago fica ate o fim da fase (ver phases.c)
         self.col_x = [0, FB_W - BRICK_W]
         mask = 0
         for r in range(BRICK_ROWS):
-            if (r % 6) < 2 or (r % 6) > 4:
+            if (r % (MURALHA_CHEIOS + MURALHA_VAZIOS)) < MURALHA_CHEIOS:
                 mask |= (1 << r)
         self.start = [mask, mask]
-        self.rebuild_round = True
 
     def _pinball(self):
         cx, cy = FB_W // 2 - BUMPER_W // 2, FB_H // 2 - BUMPER_H // 2
@@ -303,8 +308,7 @@ class Phase:
         self.shots = []
         self.nave_reset()
         self.bonus_sleep()
-        if self.rebuild_round:
-            self.alive = list(self.start)
+
 
     # ---------- raquetes ----------
     def paddle_margin(self):
@@ -365,7 +369,7 @@ class Phase:
 
     # ---------- saque ----------
     def serve_x(self, direction):
-        if self.col_x and not self.rebuild_round:
+        if self.col_x and self.col_x[0] > FB_W // 4:   # so barreira do meio
             if direction < 0:
                 return self.col_x[0] - 8 - BALL_SIZE
             return self.col_x[-1] + BRICK_W + 8
@@ -454,7 +458,7 @@ class Phase:
                 continue
             novo, eixo_x = self._bounce(prev, sx, sy, sx + sw - 1,
                                         sy + sh - 1, ball)
-            if self.cur in (PHASE_PINBALL, PHASE_COLUNA):
+            if self.cur in (PHASE_PINBALL, PHASE_COLUNA, PHASE_REBOUND):
                 bx2, by2, vx2, vy2 = novo
                 giro = 1 if random.getrandbits(1) else -1
                 saida_x, saida_y = vx2, vy2
@@ -843,8 +847,21 @@ class Game:
         self.movement_remaining = 0
         self.baseline_pot = list(self.input_pot)
 
+    def ai_curva(self, primeira, ultima):
+        # espelha ai_curva() de game.c
+        n = PHASE_COUNT - 1
+        i = max(0, min(n, self.phase_idx))
+        return (primeira + (ultima - primeira) * i // n) if n > 0 else ultima
+
+    def ai_speed(self):
+        return self.ai_curva(AI_SPEED_MIN, AI_SPEED_MAX)
+
+    def ai_error(self):
+        return self.ai_curva(AI_ERROR_MAX_PX, AI_ERROR_MIN_PX)
+
     def roll_ai_bias(self):
-        self.ai_bias = random.randint(-AI_ERROR_PX, AI_ERROR_PX)
+        e = self.ai_error()
+        self.ai_bias = random.randint(-e, e)
 
     def vx_from_vy(self, vy_frac, speed_q):
         s2 = speed_q * speed_q
@@ -934,13 +951,16 @@ class Game:
         if not coming:
             target = rng // 2
         diff = target - self.paddle_pos[player]
-        speed = AI_PADDLE_SPEED + self.phase_idx // 3
+        speed = self.ai_speed()
         if abs(diff) > speed:
             diff = speed if diff > 0 else -speed
         self.paddle_pos[player] = max(0, min(rng, self.paddle_pos[player] + diff))
 
     def update_paddle_humano(self, player, rng):
         lido = self.input_paddle_y(player, rng)
+        # X cresce para a direita e Y para baixo: o volei espelha (ver game.c)
+        if self.phase.flags & PF_PADDLE_HORIZ:
+            lido = rng - lido
         if self.paddle_travado[player]:
             if abs(lido - self.paddle_pos[player]) <= PADDLE_TAKEOVER_TOL:
                 self.paddle_travado[player] = False
@@ -1080,6 +1100,15 @@ class Game:
                 self.add_point(0)
 
     # ---------- highscores ----------
+    @staticmethod
+    def letra_do_pot(pot, atual):
+        # espelha letra_do_pot() de game.c: banda da letra atual alargada
+        larg = 4096 // 26
+        if 0 <= atual <= 25:
+            if atual * larg - INITIALS_HIST <= pot < (atual + 1) * larg + INITIALS_HIST:
+                return atual
+        return max(0, min(25, (pot * 26) // 4096))
+
     def grava_iniciais(self):
         pts = self.total_score[self.initials_player - 1]
         self.hi_consider(pts, self.initials_player,
@@ -1173,9 +1202,10 @@ class Game:
                 gfx_text(self.fb, self.glyphs, tx, ty, label, 2, 0)
             else:
                 gfx_text(self.fb, self.glyphs, tx, ty, label, 2, 1)
-        center_text(self.fb, self.glyphs, by + bh + 5,
-                    "1 JOGADOR CONTRA A CPU" if self.menu_sel == MODE_ARCADE
-                    else "2 JOGADORES", 1)
+        # fundo preto: a linha pontilhada do demo cruza esta legenda (ver game.c)
+        center_text_boxed(self.fb, self.glyphs, by + bh + 5,
+                          "1 JOGADOR CONTRA A CPU" if self.menu_sel == MODE_ARCADE
+                          else "2 JOGADORES", 1)
         if ((self.state_timer >> 4) & 1) == 0:
             center_text(self.fb, self.glyphs, FB_H - 9, "SELETOR CONFIRMA", 1)
 
@@ -1499,13 +1529,23 @@ class Game:
             if not self.initials_armed:
                 self.initials_buf = [" "] * INITIALS_LEN
                 self.initials_slot = 0
+                self.initials_letra = self.letra_do_pot(
+                    self.input_pot[self.initials_player - 1], -1)
+                self.initials_cool = 0
                 self.initials_armed = True
             if self.initials_slot < INITIALS_LEN:
                 pot = self.input_pot[self.initials_player - 1]
-                idx = max(0, min(25, (pot * 26) // 4096))
-                self.initials_buf[self.initials_slot] = chr(ord("A") + idx)
+                alvo = self.letra_do_pot(pot, self.initials_letra)
+                if self.initials_cool > 0:
+                    self.initials_cool -= 1
+                elif alvo != self.initials_letra:
+                    self.initials_letra += 1 if alvo > self.initials_letra else -1
+                    self.initials_cool = INITIALS_STEP_FRAMES
+                self.initials_buf[self.initials_slot] = chr(
+                    ord("A") + self.initials_letra)
                 if self.input_seletor:
                     self.initials_slot += 1
+                    self.initials_cool = 0
             else:
                 self.grava_iniciais()
                 self.state_timer += 1
