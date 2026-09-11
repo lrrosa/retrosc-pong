@@ -121,6 +121,26 @@
 #define TRIPLE_SEG_H      (PADDLE_H / 3)          // 8 px por pedaco
 #define TRIPLE_GAP        8                       // vao entre os pedacos
 
+// Fase PEBOLIM: cada jogador tem tres barras em profundidades diferentes,
+// todas no mesmo pot. As duas das pontas (a de tras, que guarda o gol, e a da
+// frente) andam juntas; a DO MEIO anda ao contrario -- e essa a fase. Com o
+// pot no meio do curso as tres se alinham, que e a posicao mais fraca: quem
+// quer duas linhas de defesa tem que sair do centro.
+// As alturas sao diferentes de proposito: a de tras e a raquete inteira (o
+// goleiro), a da frente e a menor. Assim a barra de tras ainda salva a bola
+// que passou rente a da frente, em vez de ser uma copia inutil dela -- e o
+// angulo de saida fica mais aberto na barra pequena, que usa a propria altura
+// como leque (ver on_paddle_hit em game.c).
+#define PEBOLIM_BARRAS    3
+#define PEBOLIM_H_FUNDO   PADDLE_H                // goleiro: a raquete inteira
+#define PEBOLIM_H_MEIO    20                      // a que anda ao contrario
+#define PEBOLIM_H_FRENTE  16                      // atacante
+// Distancia entre uma barra e a proxima do mesmo jogador. Com 34 px as barras
+// da frente ficam em x=74 e x=179, deixando 102 px de meio de campo livre --
+// espaco para a bola ganhar angulo entre uma troca e outra e para o saque do
+// centro nascer longe de qualquer barra.
+#define PEBOLIM_PASSO     34
+
 // BONUS: o mascote da RetroSC (16x16) cruza a quadra na diagonal de tempos em
 // tempos nas fases marcadas com PF_TEM_BONUS -- as vezes de cima para baixo, as
 // vezes de baixo para cima -- com a palavra BONUS piscando junto. Acerta-lo da

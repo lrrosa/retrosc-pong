@@ -13,7 +13,7 @@ máquina arcade do evento [**RetroSC**](https://retrosc.org/).
 - 2 raquetes controladas por **potenciômetros 10 kΩ** (ADC do Pico).
 - **Dois modos**, escolhidos no menu do attract: **arcade** (1 jogador contra a
   CPU) e **versus** (2 jogadores). Os dois jogam as mesmas fases.
-- **10 fases** em sequência, em ordem crescente de dificuldade, cada uma até
+- **11 fases** em sequência, em ordem crescente de dificuldade, cada uma até
   9 pontos, e cada ponto soma no **total geral**:
   1. **PONG CLASSICO** — o pong de sempre;
   2. **TRIPLO** — a raquete vira 3 pedaços de 8 px com vãos entre eles;
@@ -21,20 +21,26 @@ máquina arcade do evento [**RetroSC**](https://retrosc.org/).
      rebate nela** e o tiro que pega uma raquete deixa ela pela metade por 5 s.
      Quem acerta a nave leva o troco: ela revida na hora, com um tiro pelo lado
      de quem rebateu a bola;
-  4. **BARREIRA I** — 2 muros de tijolos quebráveis no meio da tela;
-  5. **PINBALL** — sete obstáculos fixos no meio da quadra: um losango com um
+  4. **PEBOLIM** — cada jogador tem **três barras**, uma atrás da outra, todas
+     no mesmo pot: a de trás (o goleiro, do tamanho da raquete inteira), a do
+     meio e a da frente (a menor). As duas das pontas andam juntas e **a do
+     meio anda ao contrário** — subir o pot desce a barra do meio. Com o pot no
+     meio do curso as três se alinham, que é a posição mais fraca: quem quer
+     duas linhas de defesa tem que sair do centro;
+  5. **BARREIRA I** — 2 muros de tijolos quebráveis no meio da tela;
+  6. **PINBALL** — sete obstáculos fixos no meio da quadra: um losango com um
      poste solto acima e outro abaixo;
-  6. **BARREIRA II** — 3 muros, agora espaçados entre si;
-  7. **COLUNA** — cinco dos mesmos obstáculos, empilhados no meio e subindo e
+  7. **BARREIRA II** — 3 muros, agora espaçados entre si;
+  8. **COLUNA** — cinco dos mesmos obstáculos, empilhados no meio e subindo e
      descendo juntos;
-  8. **MURALHA** — uma parede de tijolos atrás de cada raquete, com poucos vãos
+  9. **MURALHA** — uma parede de tijolos atrás de cada raquete, com poucos vãos
      abertos de saída: só marca ponto quem enfia a bola num deles. Cada bola que
      passa da raquete derruba mais um tijolo e **o estrago fica até o fim da
      fase**, então a parede vai se abrindo e a fase acelerando;
-  9. **REBOUND** — vôlei: as raquetes deitam no chão e andam na horizontal
-     dentro da própria meia-quadra, a bola tem gravidade e o ponto sai quando
-     ela toca o chão do lado adversário;
-  10. **BARREIRA III** — 4 muros (2 por jogador), já divididos em blocos de
+  10. **REBOUND** — vôlei: as raquetes deitam no chão e andam na horizontal
+      dentro da própria meia-quadra, a bola tem gravidade e o ponto sai quando
+      ela toca o chão do lado adversário;
+  11. **BARREIRA III** — 4 muros (2 por jogador), já divididos em blocos de
       5-4-2-4-5 fileiras com um corredor vazio entre eles: a mais dura, por
       isso fecha o jogo.
 
@@ -227,27 +233,31 @@ scanlines, glow de fósforo, vignette e curvatura):
 | :---: | :---: | :---: |
 | ![](docs/images/crt_attract.png) | ![](docs/images/crt_menu.png) | ![](docs/images/crt_pause.png) |
 
-As dez fases:
+As onze fases:
 
 | 1 · pong clássico (com o mascote-bônus) | 2 · triplo | 3 · nave |
 | :---: | :---: | :---: |
 | ![](docs/images/crt_play.png) | ![](docs/images/crt_play_triplo.png) | ![](docs/images/crt_play_nave.png) |
 
-| 4 · barreira I | 5 · pinball | 6 · barreira II |
+| 4 · pebolim | 5 · barreira I | 6 · pinball |
 | :---: | :---: | :---: |
-| ![](docs/images/crt_play_barreira1.png) | ![](docs/images/crt_play_pinball.png) | ![](docs/images/crt_play_barreira2.png) |
+| ![](docs/images/crt_play_pebolim.png) | ![](docs/images/crt_play_barreira1.png) | ![](docs/images/crt_play_pinball.png) |
 
-| 7 · coluna | 8 · muralha | 9 · rebound (vôlei) |
+| 7 · barreira II | 8 · coluna | 9 · muralha |
 | :---: | :---: | :---: |
-| ![](docs/images/crt_play_coluna.png) | ![](docs/images/crt_play_muralha.png) | ![](docs/images/crt_play_rebound.png) |
+| ![](docs/images/crt_play_barreira2.png) | ![](docs/images/crt_play_coluna.png) | ![](docs/images/crt_play_muralha.png) |
 
-| 10 · barreira III | Fim de fase | Início de fase |
+| 10 · rebound (vôlei) | 11 · barreira III | Fim de fase |
 | :---: | :---: | :---: |
-| ![](docs/images/crt_play_barreira3.png) | ![](docs/images/crt_phase_end.png) | ![](docs/images/crt_phase_intro.png) |
+| ![](docs/images/crt_play_rebound.png) | ![](docs/images/crt_play_barreira3.png) | ![](docs/images/crt_phase_end.png) |
 
-| Game Over | Enter Initials | High Scores |
+| Início de fase | Game Over | Enter Initials |
 | :---: | :---: | :---: |
-| ![](docs/images/crt_game_over.png) | ![](docs/images/crt_enter_initials.png) | ![](docs/images/crt_highscores.png) |
+| ![](docs/images/crt_phase_intro.png) | ![](docs/images/crt_game_over.png) | ![](docs/images/crt_enter_initials.png) |
+
+| High Scores | | |
+| :---: | :---: | :---: |
+| ![](docs/images/crt_highscores.png) | | |
 
 Renderizações "raw" (sem CRT, só o framebuffer escalado) ficam em
 `docs/images/sim_*.png`.
@@ -329,7 +339,7 @@ Controles no Wokwi: gire os **potenciômetros** (mouse) para mover as raquetes;
   (2 jogadores) e aperte o **SELETOR** para confirmar. Sem toque nenhum por
   15 s, volta ao attract.
 - **Jogar**: rode os potenciômetros para mover as raquetes (esquerda = P1,
-  direita = P2 ou CPU). São **10 fases em sequência**, cada uma até **9
+  direita = P2 ou CPU). São **11 fases em sequência**, cada uma até **9
   pontos**, e todo ponto também soma no **total geral**. Cada fase começa com
   a bola indo para o lado de quem perdeu a fase anterior.
 - **Como a partida acaba**:
@@ -339,7 +349,7 @@ Controles no Wokwi: gire os **potenciômetros** (mouse) para mover as raquetes;
     a cada fase**: a raquete dela fica mais rápida e, sobretudo, a mira vai
     ficando mais certeira — na primeira fase ela erra de propósito quase
     metade das bolas, na última quase não sobra folga.
-  - No **modo versus** jogam-se as 10 fases e ganha quem tiver o maior total —
+  - No **modo versus** jogam-se as 11 fases e ganha quem tiver o maior total —
     mas a partida encerra antes se um dos dois **não alcançar mais o outro nem
     ganhando tudo o que falta**. A conta usa os pontos ainda em disputa (9 por
     fase restante, mais 6 nas fases que têm o bônus); se a diferença for
@@ -364,15 +374,15 @@ Tudo importante está em [`src/config.h`](src/config.h):
 
 - `PHASE_WIN_SCORE` — pontos para vencer **uma fase** (padrão 9). É o botão
   de volume da duração da partida. Medido no simulador: um jogador que vence
-  as 10 fases leva ~18 min no arcade (quem perde na terceira sai em ~5 min), e
-  uma partida versus equilibrada, que vai até a décima fase, passa de 30 min —
+  as 11 fases leva ~19 min no arcade (quem perde na terceira sai em ~5 min), e
+  uma partida versus equilibrada, que vai até a última fase, passa de 30 min —
   quando um dos dois abre vantagem decisiva ela acaba antes. Para uma fila de
   evento, **5 pontos por fase** corta isso quase pela metade sem mudar mais
   nada.
 - Sons (`audio.c`) — rebatida 480 Hz, parede 640 Hz, tijolo 880 Hz e ponto
   150 Hz. Os três primeiros são **curtos** (17 a 67 ms) de propósito, e é aí que
   está a pegadinha: **alto-falante muito pequeno não toca beep curto**. Numa TV
-  de 10" as rebatidas simplesmente não saem, embora o ponto (450 ms) saia; numa
+  de 10" as rebatidas simplesmente não saem, embora o ponto (300 ms) saia; numa
   TV comum ou no amplificador do gabinete, todos aparecem. Se for testar o som,
   use um alto-falante de verdade antes de mexer nas notas.
 - `AI_SPEED_MIN/MAX`, `AI_ERROR_MAX_PX/MIN_PX` — dificuldade da CPU no modo

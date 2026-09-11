@@ -11,7 +11,7 @@ via ADC, and plays PWM audio. C / Pico SDK. No RTOS — a single `while` loop in
 `main.c` synced to vsync.
 
 Two modes (**arcade** = 1 player vs CPU, **versus** = 2 players) picked from a
-menu on the attract screen, and **10 phases** ("fases") played in sequence.
+menu on the attract screen, and **11 phases** ("fases") played in sequence.
 User-facing text is Portuguese, uppercase, **no accents** (the 5×7 font only
 covers ASCII 0x20–0x5F).
 
@@ -174,7 +174,37 @@ wall measured 336 s for the phase, 8 px gaps 328 s, 16 px gaps 258 s and half-op
 the ball has to beat a paddle before it ever reaches a hole. The phase is long for a
 different reason, and so is BARREIRA III (266 s, and no wall at the goal): sharpening
 the CPU stretched every phase, that one from ~68 s. Reach for `PHASE_WIN_SCORE` before
-reaching for the brick pattern. The **bonus mascot is not a phase**: any phase with
+reaching for the brick pattern.
+
+**`PHASE_PEBOLIM` is the one phase whose paddle is not a single line.** Each player
+drives three bars at three depths from the same pot — the goalie (`PADDLE_H`, at
+`PADDLE_MARGIN`), the middle one and the forward one (the smallest), `PEBOLIM_PASSO`
+apart — and the middle bar takes the **mirrored** travel (`range - pos`). The mirror is
+the phase: at mid-travel the three line up and the player covers one band, off centre
+they cover two. Three things about it are load-bearing:
+  - **the three heights differ on purpose** (24 / 20 / 16). With all three equal, the
+    goalie is a copy of the forward bar at the same y and never saves a ball the
+    forward bar had not already saved; four pixels of extra reach make it the second
+    chance it is meant to be.
+  - **`phase_paddle_range()` does not know this phase exists.** The travel is the
+    normal paddle's and each bar is centred on its own line, which is the same rule the
+    bonuses obey: the paddle changes size, never travel.
+  - **the bars stay one-directional**, like every paddle in `physics()` — they only
+    meet a ball heading for their own goal, so nobody is caromed back by their own
+    forward bar. The price is that the ball can be drawn over an inactive bar of the
+    side that just hit it: measured in the sim, 0.06 % of the play frames, one crossing
+    every 67 s. Making them two-sided would remove that and open a far worse door —
+    goalie and forward bar share a y, so a flat return would bounce between two
+    parallel faces 34 px apart (see the orbit gotcha).
+  It sits **fourth**, among the phases that still teach the game rather than test it,
+  and the numbers below come from that slot — the CPU's aim is loose there. Measured
+  against the ±14 px simulated player: 7.7 s per point, 3.7 touches per point (the most
+  of any phase without bricks), longest rally 18, no hang in the 33-minute cap, and
+  9–0.8 in the player's favour — where PONG CLASSICO (9–0) and NAVE (9–1) already are.
+  The whole phase runs ~72 s, which is what the eleventh phase adds to a match
+  (17.1 → 18.3 min in the sim, for a player who wins everything).
+
+The **bonus mascot is not a phase**: any phase with
 `PF_TEM_BONUS` gets it on a random timer (at most `BONUS_PASSES_MAX` passes per phase),
 crossing on a diagonal from the top or the bottom with "BONUS" blinking beside it.
 Hitting it draws one of five prizes (`bonus_tipo_t`), the CPU included: points, a
@@ -255,7 +285,7 @@ live in `src/config.h`.
   since their scenery favours whoever aims better) to 1.5 in phase 1 and 5.0–5.9 in
   phases 8–10. Phase geometry still dominates any single phase — TRIPLO's gapped
   paddle is a coin toss at any error, BARREIRA I a walkover — so read the curve across
-  the ten, never one phase at a time.
+  all of them, never one phase at a time.
 - **Brick gaps have to be much bigger than the ball.** The ball is 3 px and only
   scores if it fits entirely inside a gap: back when MURALHA started with gaps already
   open, an 8 px gap measured 34 s per point and a 24 px gap 16 s. It now starts solid
@@ -276,7 +306,7 @@ live in `src/config.h`.
   resets to the middle of the court on *every* serve, and the ball was born inside it in
   100 % of the rounds (measured: 51 % of the serves left toward the scorer, and 99 % of
   them teleported the ball ~13 px vertically as `bounce_off()` pushed it out).
-  `tools/sim.py` + a loop over `reset_round(scorer)` checks all ten phases at once; the
+  `tools/sim.py` + a loop over `reset_round(scorer)` checks every phase at once; the
   test that catches this steps a few frames and looks at the sign of `vx` when the ball
   leaves the central band — not just at the serve. Keep that invariant.
   The condition that picks the hugging serve must describe the *geometry*, not some
@@ -306,7 +336,7 @@ live in `src/config.h`.
   pinned there — identical to each other and a hair from the 490 Hz point, so a wall
   bounce followed by a paddle hit was heard as one continuous tone and the second event
   simply did not exist. `PWM_TOP` = 4095 lifts the floor to 120 Hz, the tones are now
-  spread by pitch (paddle 480, wall 640, brick 880, point 150 Hz / 450 ms) and
+  spread by pitch (paddle 480, wall 640, brick 880, point 150 Hz / 300 ms) and
   `audio_beep()` inserts **one frame of silence** when it cuts a sounding tone short.
   What was **not** in the firmware: the hits that stayed missing after all that. The
   cabinet was being tested on a 10-inch TV whose speakers do not reproduce a 4-frame
@@ -390,7 +420,7 @@ live in `src/config.h`.
   *downward* and X grows *rightward*, so whichever knob rotation feels right for the
   vertical paddles feels backwards for REBOUND's horizontal ones. `update_paddle_humano()`
   mirrors the reading (`lido = range - lido`) when `PF_PADDLE_HORIZ` is set — the
-  vertical phases are the player's reference, being nine of the ten, so the volley is
+  vertical phases are the player's reference, being all but one, so the volley is
   the one that gets flipped. It is flipped at the *pot reading* only: `paddle_pos[]`
   stays in screen coordinates, which keeps `update_paddle_ai()` and the pause takeover
   comparison untouched.

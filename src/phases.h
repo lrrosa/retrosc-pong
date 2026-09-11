@@ -16,6 +16,7 @@ typedef enum {
     PHASE_CLASSICO = 0,   // pong normal
     PHASE_TRIPLO,         // 3 raquetes pequenas por jogador
     PHASE_NAVE,           // a nave atira e encolhe a raquete atingida
+    PHASE_PEBOLIM,        // 3 barras por jogador; a do meio anda ao contrario
     PHASE_BARREIRA1,      // 2 muros de tijolos no meio
     PHASE_PINBALL,        // obstaculos fixos no meio da quadra
     PHASE_BARREIRA2,      // 3 muros espacados

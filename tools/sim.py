@@ -67,6 +67,13 @@ MURALHA_CHEIOS    = 3
 MURALHA_VAZIOS    = 2
 TRIPLE_SEG_H      = PADDLE_H // 3
 TRIPLE_GAP        = 8
+# PEBOLIM: 3 barras por jogador, uma atras da outra, todas no mesmo pot; a do
+# meio recebe o curso espelhado (ver config.h)
+PEBOLIM_BARRAS    = 3
+PEBOLIM_H_FUNDO   = PADDLE_H
+PEBOLIM_H_MEIO    = 20
+PEBOLIM_H_FRENTE  = 16
+PEBOLIM_PASSO     = 34
 
 BONUS_W, BONUS_H    = 16, 16      # o mascote
 BONUS_VY_Q         = 0x060
@@ -147,18 +154,20 @@ MODE_COUNT = 2
 # ============================================================
 # Fases (espelham src/phases.c)
 # ============================================================
-(PHASE_CLASSICO, PHASE_TRIPLO, PHASE_NAVE, PHASE_BARREIRA1, PHASE_PINBALL,
- PHASE_BARREIRA2, PHASE_COLUNA, PHASE_MURALHA, PHASE_REBOUND,
- PHASE_BARREIRA3) = range(10)
-PHASE_COUNT = 10
+(PHASE_CLASSICO, PHASE_TRIPLO, PHASE_NAVE, PHASE_PEBOLIM, PHASE_BARREIRA1,
+ PHASE_PINBALL, PHASE_BARREIRA2, PHASE_COLUNA, PHASE_MURALHA, PHASE_REBOUND,
+ PHASE_BARREIRA3) = range(11)
+PHASE_COUNT = 11
 
-PHASE_NAMES = ["PONG CLASSICO", "TRIPLO", "NAVE", "BARREIRA I", "PINBALL",
-               "BARREIRA II", "COLUNA", "MURALHA", "REBOUND", "BARREIRA III"]
+PHASE_NAMES = ["PONG CLASSICO", "TRIPLO", "NAVE", "PEBOLIM", "BARREIRA I",
+               "PINBALL", "BARREIRA II", "COLUNA", "MURALHA", "REBOUND",
+               "BARREIRA III"]
 PHASE_HINTS = ["O PONG DE SEMPRE", "TRES RAQUETES COM VAOS",
-               "OS TIROS ENCOLHEM A RAQUETE", "DOIS MUROS NO MEIO",
-               "OBSTACULOS NO MEIO", "TRES MUROS COM VAOS",
-               "OBSTACULOS SOBEM E DESCEM", "OS TIJOLOS GUARDAM O GOL",
-               "VOLEI: NAO DEIXE A BOLA CAIR", "QUATRO MUROS: ABRA CAMINHO"]
+               "OS TIROS ENCOLHEM A RAQUETE", "A BARRA DO MEIO VAI AO CONTRARIO",
+               "DOIS MUROS NO MEIO", "OBSTACULOS NO MEIO",
+               "TRES MUROS COM VAOS", "OBSTACULOS SOBEM E DESCEM",
+               "OS TIJOLOS GUARDAM O GOL", "VOLEI: NAO DEIXE A BOLA CAIR",
+               "QUATRO MUROS: ABRA CAMINHO"]
 
 PF_NO_CENTER_LINE = 1 << 0
 PF_GRAVITY        = 1 << 1
@@ -359,6 +368,26 @@ class Phase:
             y0 = max(0, min(FB_H - span, pos + (span0 - span) // 2))
             return [(x, y0 + i * (h + TRIPLE_GAP), PADDLE_W, h)
                     for i in range(3)]
+        if self.cur == PHASE_PEBOLIM:
+            # as das pontas seguem a leitura, a do meio recebe o curso
+            # ESPELHADO; cada barra fica centrada na sua linha (ver phases.c)
+            alt = (PEBOLIM_H_FUNDO, PEBOLIM_H_MEIO, PEBOLIM_H_FRENTE)
+            rng = self.paddle_range()
+            linha = pos + PEBOLIM_H_FUNDO // 2
+            espelho = (rng - pos) + PEBOLIM_H_FUNDO // 2
+            segs = []
+            for i in range(PEBOLIM_BARRAS):
+                h = alt[i]
+                if maior:
+                    h = h * 3 // 2
+                elif menor:
+                    h = h // 2
+                c = espelho if i == 1 else linha
+                y = max(0, min(FB_H - h, c - h // 2))
+                bx = (PADDLE_MARGIN + i * PEBOLIM_PASSO) if player == 0 else (
+                    FB_W - PADDLE_MARGIN - PADDLE_W - i * PEBOLIM_PASSO)
+                segs.append((bx, y, PADDLE_W, h))
+            return segs
         if maior:
             y0 = max(0, min(FB_H - PADDLE_H_BIG,
                             pos - (PADDLE_H_BIG - PADDLE_H) // 2))
@@ -1316,13 +1345,15 @@ class Game:
     def draw_highscores(self):
         self.fb.clear(0)
         center_text(self.fb, self.glyphs, 8, "HIGH SCORES", 2)
+        # bloco centrado, nao linha a linha (ver game.c)
+        x = (FB_W - text_width("0. XXX 000 ARCADE", 1)) // 2
         y = 36
         for i, (s, p, ini, md) in enumerate(self.hiscores):
             if s > 0:
                 line = f"{i+1}. {ini} {s:3d} {'ARCADE' if md == MODE_ARCADE else 'VERSUS'}"
             else:
                 line = f"{i+1}. ---   -"
-            gfx_text(self.fb, self.glyphs, 52, y, line, 1, 1)
+            gfx_text(self.fb, self.glyphs, x, y, line, 1, 1)
             y += 14
         center_text(self.fb, self.glyphs, FB_H - 12,
                     "APERTE O SELETOR" if ((self.state_timer >> 6) & 1)
@@ -1577,14 +1608,15 @@ class Game:
 # ============================================================
 SHOTS = ["attract", "menu", "phase_intro", "countdown", "play", "pause",
          "play_triplo", "play_nave", "play_barreira1", "play_pinball",
-         "play_barreira2", "play_coluna", "play_muralha", "play_rebound",
-         "play_barreira3", "phase_end", "game_over", "enter_initials",
-         "highscores"]
+         "play_pebolim", "play_barreira2", "play_coluna", "play_muralha",
+         "play_rebound", "play_barreira3", "phase_end", "game_over",
+         "enter_initials", "highscores"]
 
 FASE_DO_SHOT = {
     "play_nave": PHASE_NAVE, "play_triplo": PHASE_TRIPLO,
     "play_barreira1": PHASE_BARREIRA1, "play_pinball": PHASE_PINBALL,
     "play_barreira2": PHASE_BARREIRA2, "play_coluna": PHASE_COLUNA,
+    "play_pebolim": PHASE_PEBOLIM,
     "play_muralha": PHASE_MURALHA, "play_rebound": PHASE_REBOUND,
     "play_barreira3": PHASE_BARREIRA3,
 }
@@ -1622,6 +1654,11 @@ def save_shots(outdir, assets, glyphs):
                 g.phase.shots = [{"x": 90, "y": 78, "vx": -SHOT_SPEED},
                                  {"x": 170, "y": 78, "vx": SHOT_SPEED}]
                 g.phase.shrink[0] = 60
+            elif idx == PHASE_PEBOLIM:
+                # pot longe do meio nos dois lados: so assim a barra do meio
+                # aparece do lado oposto ao das outras duas, que e a fase
+                g.paddle_pos = [34, 120]
+                g.ball_x, g.ball_y = 140 << 8, 70 << 8
             elif idx == PHASE_REBOUND:
                 r = g.phase.paddle_range()
                 g.paddle_pos = [r // 3, r // 2]

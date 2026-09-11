@@ -79,8 +79,9 @@ static uint32_t escudo_alive[2];                // tijolos do escudo que restam
 // =============================================================
 static const char *const names[PHASE_COUNT] = {
     [PHASE_CLASSICO]  = "PONG CLASSICO",
-    [PHASE_NAVE]      = "NAVE",
     [PHASE_TRIPLO]    = "TRIPLO",
+    [PHASE_NAVE]      = "NAVE",
+    [PHASE_PEBOLIM]   = "PEBOLIM",
     [PHASE_BARREIRA1] = "BARREIRA I",
     [PHASE_PINBALL]   = "PINBALL",
     [PHASE_BARREIRA2] = "BARREIRA II",
@@ -92,8 +93,9 @@ static const char *const names[PHASE_COUNT] = {
 
 static const char *const hints[PHASE_COUNT] = {
     [PHASE_CLASSICO]  = "O PONG DE SEMPRE",
-    [PHASE_NAVE]  = "OS TIROS ENCOLHEM A RAQUETE",
     [PHASE_TRIPLO]    = "TRES RAQUETES COM VAOS",
+    [PHASE_NAVE]      = "OS TIROS ENCOLHEM A RAQUETE",
+    [PHASE_PEBOLIM]   = "A BARRA DO MEIO VAI AO CONTRARIO",
     [PHASE_BARREIRA1] = "DOIS MUROS NO MEIO",
     [PHASE_PINBALL]   = "OBSTACULOS NO MEIO",
     [PHASE_BARREIRA2] = "TRES MUROS COM VAOS",
@@ -404,6 +406,47 @@ int phase_paddle_segments(int player, int pos, rect_t *out) {
             out[i].h = h;
         }
         return 3;
+    }
+
+    // PEBOLIM: as tres barras do jogador, uma atras da outra, todas no mesmo
+    // pot. As das pontas seguem a leitura; a do meio recebe o curso ESPELHADO
+    // (range - pos), que e a fase inteira: subir o pot desce a barra do meio.
+    // O curso continua sendo o da raquete normal, entao phase_paddle_range()
+    // nao precisa saber desta fase; o que muda de barra para barra e a
+    // altura, e cada uma fica CENTRADA na sua linha -- crescer ou encolher
+    // pelo centro e a mesma regra dos bonus, a raquete nunca pula debaixo da
+    // mao de quem joga.
+    if (cur_phase == PHASE_PEBOLIM) {
+        // out[] tem PADDLE_SEG_MAX lugares em TODOS os chamadores (physics,
+        // draw_paddles, update_paddle_ai, update_nave): subir PEBOLIM_BARRAS
+        // sem subir PADDLE_SEG_MAX escreveria na pilha de cada um deles.
+        _Static_assert(PEBOLIM_BARRAS <= PADDLE_SEG_MAX,
+                       "PEBOLIM_BARRAS nao cabe em out[PADDLE_SEG_MAX]");
+        static const uint8_t alt[PEBOLIM_BARRAS] = {
+            PEBOLIM_H_FUNDO, PEBOLIM_H_MEIO, PEBOLIM_H_FRENTE
+        };
+        // O espelho tem que ser tirado do MESMO curso que o pot usa, senao a
+        // barra do meio sai de registro com as outras duas -- por isso
+        // phase_paddle_range() e nao uma copia da conta dele.
+        int range   = phase_paddle_range();
+        int linha   = pos + PEBOLIM_H_FUNDO / 2;           // centro das barras das pontas
+        int espelho = (range - pos) + PEBOLIM_H_FUNDO / 2; // ... e o do meio
+        for (int i = 0; i < PEBOLIM_BARRAS; i++) {
+            int h = alt[i];
+            if (maior)      h = h * 3 / 2;
+            else if (menor) h = h / 2;
+            int c = (i == 1) ? espelho : linha;
+            int y = c - h / 2;
+            if (y < 0) y = 0;
+            if (y > FB_HEIGHT - h) y = FB_HEIGHT - h;
+            out[i].x = (player == 0)
+                     ? (PADDLE_MARGIN + i * PEBOLIM_PASSO)
+                     : (FB_WIDTH - PADDLE_MARGIN - PADDLE_W - i * PEBOLIM_PASSO);
+            out[i].y = y;
+            out[i].w = PADDLE_W;
+            out[i].h = h;
+        }
+        return PEBOLIM_BARRAS;
     }
 
     out[0].x = x;
