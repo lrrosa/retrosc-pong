@@ -99,8 +99,8 @@ void audio_tick_frame(void) {
 void audio_paddle_hit(void) { audio_beep(480, 70); }
 void audio_wall_hit(void)   { audio_beep(640, 45); }
 void audio_brick_hit(void)  { audio_beep(880, 30); }
-// O ponto e o unico som grave, e e o mais longo: 450 ms dao tempo de a caixa
+// O ponto e o unico som grave, e e o mais longo: 300 ms dao tempo de a caixa
 // mover ar de verdade. Nenhum outro som chega perto dessa nota.
-void audio_score(void)      { audio_beep(150, 450); }
+void audio_score(void)      { audio_beep(150, 300); }
 void audio_confirm(void)    { audio_beep(660, 90); }
 void audio_attract_tick(void){ audio_beep(880, 20); }

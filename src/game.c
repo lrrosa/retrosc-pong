@@ -733,6 +733,10 @@ static void draw_highscores(void) {
     gfx_clear(0);
     center_text(8, "HIGH SCORES", 2);
     const hi_table_t *t = hi_get();
+    // Bloco centrado, nao cada linha: todas tem a mesma largura (o placar sai
+    // com %3d e os dois modos tem seis letras), entao centrar o conjunto
+    // mantem as colunas alinhadas. Centrar linha a linha desalinharia.
+    const int x = (FB_WIDTH - gfx_text_width("0. XXX 000 ARCADE", 1)) / 2;
     int y = 36;
     for (int i = 0; i < HISCORE_COUNT; i++) {
         char buf[24];
@@ -747,7 +751,7 @@ static void draw_highscores(void) {
         } else {
             snprintf(buf, sizeof(buf), "%d. ---   -", i + 1);
         }
-        gfx_text(52, y, buf, 1, 1);
+        gfx_text(x, y, buf, 1, 1);
         y += 14;
     }
     // Rodape alternando: a tabela faz parte do attract, entao vale lembrar
