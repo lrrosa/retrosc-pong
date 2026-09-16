@@ -239,8 +239,14 @@ for initials and menu; `input_last_moved()` tells the menu which pot to read;
 `input_seletor_pressed()` is the SELETOR edge. Also forces the Pico SMPS into PWM mode
 (GPIO23 high) for a cleaner ADC supply.
 
-**High scores** (`highscores.{c,h}`): persisted in the **last flash sector**
-(magic + version + checksum; **v3** stores the mode, so upgrading wipes the table). Flash-touching functions are `__not_in_flash_func`
+**High scores** (`highscores.{c,h}`): the top `HISCORE_COUNT` (**9** — what the
+screen holds, one line per 14 px from y=36 to y=148), persisted in the **last flash
+sector** (magic + version + checksum). Any change to the *layout* of `hi_table_t`
+needs a new `HISCORE_VERSION`, which wipes the table on the first boot: v3 added the
+mode, v4 went from 5 entries to 9. `hi_save()` writes a single `FLASH_PAGE_SIZE`
+page and memcpys the whole table into a buffer that size, so `HISCORE_COUNT` is
+bounded by it (84 of 256 bytes at 9; a `_Static_assert` holds the line).
+Flash-touching functions are `__not_in_flash_func`
 and wrap `save_and_disable_interrupts()`.
 
 **Assets** (`assets.{c,h}`): const 1-bit bitmaps (the RetroSC logo 220×69 and the

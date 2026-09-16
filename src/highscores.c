@@ -14,6 +14,12 @@
 #endif
 #define HI_FLASH_OFFSET   (PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE)
 
+// hi_save() grava UMA pagina de flash e copia a tabela inteira para dentro de
+// um buffer desse tamanho: subir HISCORE_COUNT alem do que cabe ali estouraria
+// o buffer sem nenhum aviso. Com 9 entradas sao 84 dos 256 bytes.
+_Static_assert(sizeof(hi_table_t) <= FLASH_PAGE_SIZE,
+               "a tabela nao cabe na pagina que hi_save() grava");
+
 static hi_table_t table_ram;
 
 static const hi_table_t *flash_table(void) {

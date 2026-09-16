@@ -253,9 +253,13 @@
 #define AI_ERROR_MIN_PX   15                 // ... e na ultima
 
 // ===== Highscores =====
-#define HISCORE_COUNT     5
+// Nove entradas: e o que a tela comporta (linha a cada 14 px, da y=36 ate
+// y=148, ainda 25 px acima do rodape). Mexer aqui muda o TAMANHO da tabela
+// gravada na flash, entao vem junto com um numero de versao novo -- senao a
+// tabela antiga seria lida com o layout novo.
+#define HISCORE_COUNT     9
 #define HISCORE_MAGIC     0x50524F4Bu        // 'PROK'
-#define HISCORE_VERSION   3                  // v3: guarda o modo (arcade/versus)
+#define HISCORE_VERSION   4                  // v4: 9 entradas (v3: guarda o modo)
 #define INITIALS_LEN      3                  // letras por entrada
 
 #endif // PONG_CONFIG_H

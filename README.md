@@ -358,7 +358,7 @@ Controles no Wokwi: gire os **potenciômetros** (mouse) para mover as raquetes;
 - **Ritmo**: a contagem 3-2-1 aparece só no primeiro ponto de cada fase; entre
   os pontos seguintes é só um "GO" rápido. Apertar o SELETOR pula as telas de
   início e de fim de fase — e, **durante a partida**, abre a pausa.
-- **Iniciais**: se o total entrar no top 5, o jogador insere 3 letras estilo
+- **Iniciais**: se o total entrar no top 9, o jogador insere 3 letras estilo
   arcade — girar o pot rola pelo alfabeto A–Z, apertar o SELETOR confirma a
   letra atual e passa para a próxima. A rolagem tem **freio**: no máximo 10
   letras por segundo, e a letra em foco só troca quando o pot sai da faixa dela
@@ -457,9 +457,10 @@ Veja `docs/images/preview_logo_1bit.png` para saber como ficou a versão
 - **Serigrafia da PCB**: as placas da v1 têm o botão serigrafado como
   **START** (a net no KiCad também se chama `START`). O firmware, os diagramas
   e as telas já o chamam de **SELETOR** — é o mesmo botão no GP22.
-- **Tabela de high scores zera ao atualizar**: o formato ganhou o campo de
-  modo (`HISCORE_VERSION 3`), então a tabela gravada por firmwares antigos é
-  descartada na primeira execução.
+- **Tabela de high scores zera ao atualizar**: ela passou a ter 9 entradas em
+  vez de 5, o que muda o tamanho do registro gravado (`HISCORE_VERSION 4`),
+  então a tabela gravada por firmwares antigos é descartada na primeira
+  execução.
 
 ## Créditos e referências
 

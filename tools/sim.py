@@ -55,7 +55,7 @@ INITIALS_HIST        = 78
 PAUSE_TIMEOUT_S   = 30
 PAUSE_POT_STEP    = 400
 PADDLE_TAKEOVER_TOL = 6
-HISCORE_COUNT     = 5
+HISCORE_COUNT     = 9
 INITIALS_LEN      = 3
 FONT_CELL_W       = 6
 FONT_CELL_H       = 8
@@ -1704,9 +1704,13 @@ def save_shots(outdir, assets, glyphs):
             g.total_score = [63, 55]
             g.draw_enter_initials()
         elif name == "highscores":
-            g.hiscores = [(63, 1, "LEO", MODE_ARCADE), (58, 2, "ANA", MODE_VERSUS),
-                          (44, 1, "BIA", MODE_ARCADE), (31, 1, "JOA", MODE_VERSUS),
-                          (12, 2, "PED", MODE_ARCADE)]
+            # oito preenchidas e a nona vazia: a foto mostra a tabela cheia
+            # e como fica uma linha que ninguem ocupou ainda
+            g.hiscores = [(102, 1, "LEO", MODE_ARCADE), (94, 2, "ANA", MODE_VERSUS),
+                          (81, 1, "BIA", MODE_ARCADE), (73, 1, "JOA", MODE_VERSUS),
+                          (58, 2, "PED", MODE_ARCADE), (44, 1, "TON", MODE_ARCADE),
+                          (31, 2, "VAL", MODE_VERSUS), (12, 1, "ZEZ", MODE_ARCADE),
+                          (0, 0, "   ", MODE_ARCADE)]
             g.draw_highscores()
 
         surf = pygame.image.frombuffer(bytes(g.fb.px), (FB_W, FB_H), "P")
