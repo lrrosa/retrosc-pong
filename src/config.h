@@ -180,10 +180,9 @@
 // velocidade normal e so acelera de novo no proximo toque dele.
 #define TURBO_HOLD_FRAMES   90                    // 1,5 s de bola rapida por toque
 #define TURBO_EXTRA_Q      0x180                  // +1,5 px/frame
-// TETO DURO, nao estetico: a colisao com a raquete e com o tijolo e por
-// sobreposicao no instante, sem varredura. Com bola e raquete de 3 px, a bola
-// atravessa a raquete sem tocar nela a partir de 6 px/frame; o tijolo de 4 px,
-// a partir de 7. A bola turbinada tem que ficar abaixo dos 6.
+// Teto de jogabilidade. A fisica divide o deslocamento em passos curtos:
+// testar so a posicao final fazia ate 5,5 px/frame atravessarem a raquete,
+// pois as coordenadas de colisao sao truncadas para pixels inteiros.
 #define TURBO_MAX_Q        0x580                  // 5,5 px/frame
 
 // Fase NAVE: a nave sobe e desce no meio da quadra atirando; o tiro que pega a

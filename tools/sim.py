@@ -35,6 +35,16 @@ import re
 import sys
 from pathlib import Path
 
+
+def cdiv(a, b):
+    """Integer division with C's truncation toward zero for signed Q8 values."""
+    return (abs(a) // abs(b)) * (-1 if (a < 0) != (b < 0) else 1)
+
+
+def rounded_sqrt(n):
+    root = math.isqrt(n)
+    return root + (n - root * root > root)
+
 # ============================================================
 # Constantes (espelham src/config.h)
 # ============================================================
@@ -491,6 +501,7 @@ class Phase:
                 bx2, by2, vx2, vy2 = novo
                 giro = 1 if random.getrandbits(1) else -1
                 saida_x, saida_y = vx2, vy2
+                velocidade = rounded_sqrt(vx2 * vx2 + vy2 * vy2)
                 vx2, vy2 = (vx2 - giro * (vy2 >> BUMPER_SPIN_SHIFT),
                             vy2 + giro * (vx2 >> BUMPER_SPIN_SHIFT))
                 # o eixo que acabou de rebater nao pode trocar de sinal
@@ -499,8 +510,14 @@ class Phase:
                         vx2 = -vx2
                 elif (vy2 < 0) != (saida_y < 0):
                     vy2 = -vy2
-                if -BALL_VX_MIN_Q < vx2 < BALL_VX_MIN_Q:
-                    vx2 = -BALL_VX_MIN_Q if vx2 < 0 else BALL_VX_MIN_Q
+                norma = rounded_sqrt(vx2 * vx2 + vy2 * vy2)
+                if norma:
+                    sinal_x = -1 if vx2 < 0 or (vx2 == 0 and saida_x < 0) else 1
+                    sinal_y = -1 if vy2 < 0 else 1
+                    ax = (abs(vx2) * velocidade + norma // 2) // norma
+                    ax = min(velocidade, max(BALL_VX_MIN_Q, ax))
+                    vx2 = sinal_x * ax
+                    vy2 = sinal_y * rounded_sqrt(velocidade * velocidade - ax * ax)
                 novo = (bx2, by2, vx2, vy2)
             return True, novo
 
@@ -895,11 +912,11 @@ class Game:
     def vx_from_vy(self, vy_frac, speed_q):
         s2 = speed_q * speed_q
         vx2 = max(0, s2 - vy_frac * vy_frac)
-        return int(math.sqrt(vx2)) or (speed_q // 2)
+        root = math.isqrt(vx2)
+        return max(speed_q >> 2, root + (root * root < vx2))
 
     def velocidade_saida(self):
-        # velocidade de saida de uma rebatida, turbinada ou nao (ver config.h:
-        # acima de TURBO_MAX_Q a bola atravessa a raquete)
+        # Mesmo teto de jogabilidade do firmware, com colisoes em subpassos.
         if self.turbo_frames <= 0:
             return self.ball_speed_q
         return min(self.ball_speed_q + TURBO_EXTRA_Q, TURBO_MAX_Q)
@@ -920,7 +937,7 @@ class Game:
             self.ball_vy = 0
             return
         r = random.randint(0, 255) - 128
-        vy_frac = (r * self.ball_speed_q) // 256
+        vy_frac = cdiv(r * self.ball_speed_q, 256)
         self.ball_vx = direction * self.vx_from_vy(vy_frac, self.ball_speed_q)
         self.ball_vy = vy_frac
 
@@ -1027,7 +1044,7 @@ class Game:
         if self.phase.turbo(player):
             self.turbo_frames = TURBO_HOLD_FRAMES
         vel = self.velocidade_saida()
-        vy_frac = (offset * vel) // max(1, sh)
+        vy_frac = cdiv(offset * vel, max(1, sh))
         vx_abs = self.vx_from_vy(vy_frac, vel)
         self.ball_vx = +vx_abs if player == 0 else -vx_abs
         self.ball_vy = vy_frac
@@ -1041,7 +1058,7 @@ class Game:
         frente = 1 if player == 0 else -1
         self.ball_vy = -VOLLEY_VY_Q
         self.ball_vx = (frente * VOLLEY_VX_BASE_Q +
-                        (frente * offset * VOLLEY_VX_SPREAD_Q) // half)
+                        cdiv(frente * offset * VOLLEY_VX_SPREAD_Q, half))
         self.roll_ai_bias()
 
     def add_point(self, player):
@@ -1052,21 +1069,35 @@ class Game:
 
     def physics(self):
         f = self.phase.flags
-        prev = (self.ball_x, self.ball_y, self.ball_vx, self.ball_vy)
 
         # fim do pique do turbo: a bola volta ao normal mantendo a direcao
         if self.turbo_frames > 0:
             vel = self.velocidade_saida()
             self.turbo_frames -= 1
             if self.turbo_frames == 0 and vel > 0:
-                vy = (self.ball_vy * self.ball_speed_q) // vel
+                vy = cdiv(self.ball_vy * self.ball_speed_q, vel)
                 vx = self.vx_from_vy(vy, self.ball_speed_q)
                 self.ball_vy = vy
                 self.ball_vx = -vx if self.ball_vx < 0 else vx
         if f & PF_GRAVITY:
             self.ball_vy = min(BALL_VY_MAX_Q, self.ball_vy + GRAVITY_Q)
-        self.ball_x += self.ball_vx
-        self.ball_y += self.ball_vy
+        steps = max(1, (max(abs(self.ball_vx), abs(self.ball_vy)) + 255) // 256)
+        rx = ry = 0
+        for _ in range(steps):
+            rx += self.ball_vx
+            ry += self.ball_vy
+            dx, dy = cdiv(rx, steps), cdiv(ry, steps)
+            rx -= dx * steps
+            ry -= dy * steps
+            self.physics_step(dx, dy)
+            if self.state != GS_PLAY:
+                return
+
+    def physics_step(self, dx, dy):
+        f = self.phase.flags
+        prev = (self.ball_x, self.ball_y, self.ball_vx, self.ball_vy)
+        self.ball_x += dx
+        self.ball_y += dy
 
         if self.ball_y < 0:
             self.ball_y = 0; self.ball_vy = -self.ball_vy
@@ -1407,6 +1438,8 @@ class Game:
         return True
 
     def open_menu(self):
+        if self.state != GS_ATTRACT:
+            self.enter_attract()
         self.menu_sel = MODE_ARCADE
         self.menu_idle = 0
         self.reset_movement()

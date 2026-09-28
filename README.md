@@ -446,6 +446,27 @@ ficar tremido. Para o evento, prefira `threshold`.
 Veja `docs/images/preview_logo_1bit.png` para saber como ficou a versão
 1-bit.
 
+## Testes de regressão
+
+Com Python 3 e um GCC ou Clang **nativo do computador** (não o compilador ARM):
+
+```bash
+python tools/check_firmware.py
+python tools/check_firmware.py --cc /caminho/para/gcc --sanitize
+python tools/check_docs.py
+```
+
+No Windows, `--cc C:\msys64\ucrt64\bin\gcc.exe` seleciona o GCC do MSYS2.
+Os executáveis de teste ficam em `build/tests/`. A opção `--sanitize` faz o
+programa falhar ao detectar comportamento indefinido em C.
+
+Os testes executam o **código C real** com ADC, GPIO, áudio e flash simulados:
+colisões com turbo, conservação de velocidade, curso dos potenciômetros,
+debounce, menu, pausa, timeouts, recordes e saques das 11 fases. Também executam
+330 mil frames e comparam 2.200 cenários de física com o simulador Python,
+sem exigir Pygame. O teste de flash verifica o formato e o checksum em memória;
+PIO, DMA, sinais elétricos e gravação física continuam exigindo teste na placa.
+
 ## Limitações conhecidas
 
 - **NTSC monocromático**: sem cor. Em TVs PAL-M brasileiras, a maioria

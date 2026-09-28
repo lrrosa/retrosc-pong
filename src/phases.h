@@ -68,8 +68,8 @@ const char *phase_hint(int idx);
 // Entra na fase: reconstroi tijolos, bichos e obstaculos.
 void phase_begin(int idx);
 
-// Comeco de cada ponto. Fases que rearmam os tijolos a cada round (MURALHA) e
-// a raquete encolhida pelo tiro da nave voltam ao normal aqui. Os efeitos
+// Comeco de cada ponto. Tiros e a raquete encolhida pela nave voltam ao normal;
+// os tijolos da fase continuam como estavam. Os efeitos
 // ganhos no mascote NAO: os 10 s deles sao de tempo de jogo e atravessam o
 // ponto -- so o comeco da fase os apaga.
 void phase_round_reset(void);
@@ -96,7 +96,7 @@ int  phase_serve_y(void);
 // Colisao da bola com o que a fase poe na quadra: tijolos (que somem) e
 // solidos (bumpers do pinball, coluna movel, rede do Rebound). Posicoes e
 // velocidades em Q8; prev_x/prev_y sao as do frame anterior, para saber o lado
-// da entrada. Trata no maximo uma colisao por frame e devolve true se houve.
+// da entrada. Trata no maximo uma colisao por subpasso e devolve true se houve.
 bool phase_ball_collide(int32_t prev_x, int32_t prev_y,
                         int32_t *bx, int32_t *by,
                         int32_t *vx, int32_t *vy);

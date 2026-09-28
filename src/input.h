@@ -18,7 +18,7 @@ int input_paddle_y(int player, int range);
 // Valor cru filtrado do pot 0..4095 (para entrada de iniciais).
 int input_pot_raw(int player);
 
-// Botao SELETOR pressionado neste frame (rising edge).
+// Botao SELETOR pressionado neste frame (borda apos debounce).
 bool input_seletor_pressed(void);
 
 // True se algum dos dois pots se mexeu nos ultimos N samples (para sair do attract).

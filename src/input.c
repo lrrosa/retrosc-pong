@@ -10,14 +10,17 @@
 #define FILTER_ALPHA  3                 // suaviza: novo = (3*ant + novo)/4
 #define MOVE_THRESH   40                // delta minimo (em unidades ADC) p/ "moveu"
 #define MOVE_HISTORY  20                // janela de frames para detectar movimento
+#define BUTTON_STABLE_FRAMES 2         // confirma pressao e soltura sem repiques
 
 static uint16_t raw[2]      = { 2048, 2048 };
 static uint16_t filtered[2] = { 2048, 2048 };
+static uint32_t filter_q8[2];          // preserva as fracoes do filtro IIR
 static uint16_t baseline[2] = { 2048, 2048 };
 static int moved_frames = 0;
 static int last_moved_player = 0;
 static bool last_button = false;
 static bool button_edge = false;
+static unsigned button_samples;
 
 void input_init(void) {
     // Forca o SMPS da placa Pico em modo PWM (GPIO23 alto) para reduzir o
@@ -38,6 +41,12 @@ void input_init(void) {
     // primeira leitura para "armar" baseline
     adc_select_input(POT_P1_ADC); raw[0] = filtered[0] = baseline[0] = adc_read();
     adc_select_input(POT_P2_ADC); raw[1] = filtered[1] = baseline[1] = adc_read();
+    for (int i = 0; i < 2; i++) filter_q8[i] = (uint32_t)filtered[i] * 256;
+    moved_frames = 0;
+    last_moved_player = 0;
+    last_button = !gpio_get(SELETOR_BUTTON_PIN);
+    button_samples = 0;
+    button_edge = false;
 }
 
 void input_poll(void) {
@@ -45,7 +54,9 @@ void input_poll(void) {
     adc_select_input(POT_P2_ADC); raw[1] = adc_read();
 
     for (int i = 0; i < 2; i++) {
-        filtered[i] = (filtered[i] * FILTER_ALPHA + raw[i]) / (FILTER_ALPHA + 1);
+        filter_q8[i] = (filter_q8[i] * FILTER_ALPHA + (uint32_t)raw[i] * 256) /
+                       (FILTER_ALPHA + 1);
+        filtered[i] = (filter_q8[i] + 128) / 256;
         int delta = (int)filtered[i] - (int)baseline[i];
         if (delta < 0) delta = -delta;
         if (delta > MOVE_THRESH) {
@@ -57,8 +68,14 @@ void input_poll(void) {
     if (moved_frames > 0) moved_frames--;
 
     bool now = !gpio_get(SELETOR_BUTTON_PIN);   // pull-up: pressed = LOW
-    button_edge = (now && !last_button);
-    last_button = now;
+    button_edge = false;
+    if (now == last_button) {
+        button_samples = 0;
+    } else if (++button_samples >= BUTTON_STABLE_FRAMES) {
+        last_button = now;
+        button_samples = 0;
+        button_edge = now;
+    }
 }
 
 int input_pot_raw(int player) {

@@ -549,8 +549,8 @@ static bool bounce_off(int32_t prev_x, int32_t prev_y,
         bool esquerda = (ax1 < rx0) ? true
                       : (ax0 > rx1) ? false
                                     : (p_esq <= p_dir);
-        *bx = esquerda ? ((int32_t)(rx0 - BALL_SIZE) << 8)
-                       : ((int32_t)(rx1 + 1) << 8);
+        *bx = esquerda ? ((int32_t)(rx0 - BALL_SIZE) * 256)
+                       : ((int32_t)(rx1 + 1) * 256);
         if (esquerda) { if (*vx > 0) *vx = -*vx; }
         else          { if (*vx < 0) *vx = -*vx; }
         return true;
@@ -558,11 +558,22 @@ static bool bounce_off(int32_t prev_x, int32_t prev_y,
     bool cima = (ay1 < ry0) ? true
               : (ay0 > ry1) ? false
                             : (p_cim <= p_bai);
-    *by = cima ? ((int32_t)(ry0 - BALL_SIZE) << 8)
-               : ((int32_t)(ry1 + 1) << 8);
+    *by = cima ? ((int32_t)(ry0 - BALL_SIZE) * 256)
+               : ((int32_t)(ry1 + 1) * 256);
     if (cima) { if (*vy > 0) *vy = -*vy; }
     else      { if (*vy < 0) *vy = -*vy; }
     return false;
+}
+
+// Raiz inteira arredondada, sem ponto flutuante. As velocidades cabem em Q8.
+static int32_t raiz_arredondada(uint32_t n) {
+    uint32_t lo = 0, hi = 65535;
+    while (lo < hi) {
+        uint32_t mid = lo + (hi - lo + 1) / 2;
+        if (mid * mid <= n) lo = mid;
+        else hi = mid - 1;
+    }
+    return (int32_t)(lo + (n - lo * lo > lo));
 }
 
 bool phase_ball_collide(int32_t prev_x, int32_t prev_y,
@@ -633,6 +644,7 @@ bool phase_ball_collide(int32_t prev_x, int32_t prev_y,
             // sem ninguem pontuar, e a fase nunca acabava.
             int32_t giro = (get_rand_32() & 1) ? +1 : -1;
             int32_t saida_x = *vx, saida_y = *vy;
+            int32_t velocidade = raiz_arredondada(saida_x * saida_x + saida_y * saida_y);
             int32_t nvx = *vx - giro * (*vy >> BUMPER_SPIN_SHIFT);
             int32_t nvy = *vy + giro * (*vx >> BUMPER_SPIN_SHIFT);
             *vx = nvx;
@@ -642,8 +654,19 @@ bool phase_ball_collide(int32_t prev_x, int32_t prev_y,
             // onde saiu. O eixo da saida mantem o sentido, custe o que custar.
             if (eixo_x) { if ((*vx ^ saida_x) < 0) *vx = -*vx; }
             else        { if ((*vy ^ saida_y) < 0) *vy = -*vy; }
-            if (*vx > -BALL_VX_MIN_Q && *vx < BALL_VX_MIN_Q)
-                *vx = (*vx < 0) ? -BALL_VX_MIN_Q : BALL_VX_MIN_Q;
+            // O giro acima aumenta o modulo por sqrt(1 + 1/256). Normaliza
+            // antes de devolver: rebotes sucessivos nao podem acelerar a bola.
+            int32_t norma = raiz_arredondada(*vx * *vx + *vy * *vy);
+            if (norma > 0) {
+                int sinal_x = (*vx < 0 || (*vx == 0 && saida_x < 0)) ? -1 : 1;
+                int sinal_y = (*vy < 0) ? -1 : 1;
+                int32_t ax = *vx < 0 ? -*vx : *vx;
+                ax = (ax * velocidade + norma / 2) / norma;
+                if (ax < BALL_VX_MIN_Q) ax = BALL_VX_MIN_Q;
+                if (ax > velocidade) ax = velocidade;
+                *vx = sinal_x * ax;
+                *vy = sinal_y * raiz_arredondada(velocidade * velocidade - ax * ax);
+            }
         }
         return true;
     }

@@ -34,8 +34,11 @@ so `PICO_SDK_PATH` and the toolchain are set). Output is `build/pong-rp2040.uf2`
 
 Flash: hold BOOTSEL, plug USB, copy `build/pong-rp2040.uf2` to the `RPI-RP2` drive.
 
-There are **no unit tests**. Validation = the build must succeed (the PIO assembler
-catches timing/instruction errors) plus running a simulator. For gameplay changes,
+Run `python tools/check_firmware.py --cc <native-gcc> --sanitize` for regression
+tests of the actual C with hardware stubs, 330,000 play frames and 2,200 physics
+scenarios compared with the Python simulator. This needs a native host compiler,
+not the ARM compiler. Also build the firmware (the PIO assembler catches timing
+and instruction errors) and run `python tools/check_docs.py`. For gameplay changes,
 the fastest check is driving `tools/sim.py` headless from a scratch script (import
 it as a module, stub the `draw_*` methods, feed `input_pot`/`input_seletor` and
 step `frame()`); that is how the phase pacing numbers below were measured.
@@ -214,11 +217,11 @@ goal, or the turbo. Four rules keep them from breaking things:
     normal paddle's, and what grows or shrinks stays centred on the position read
     from the pot. Change the range mid-phase and the paddle jumps under the player's
     hand, which is the same bug class as the pause takeover.
-  - **the turbo has a hard ceiling** (`TURBO_MAX_Q`). Ball/paddle collision is
-    instantaneous overlap, no sweep: with both 3 px wide, a ball moving 6 px/frame
-    can be in front of the paddle on one frame and behind it on the next without ever
-    overlapping. The 4 px brick columns break at 7. Everything above 5.5 px/frame is
-    a goal through a solid paddle.
+  - **the turbo has a gameplay ceiling** (`TURBO_MAX_Q`). `physics()` divides each
+    frame's motion into short steps and checks collisions at each step. Checking
+    only the final integer pixel position missed aligned paddles even at 5.5 px/frame.
+    Gravity and timers still advance once per frame, and division remainders preserve
+    the original Q8 displacement. Obstacle spin is normalized to preserve speed.
   - **the two paddle bonuses can meet** — one player can hold RAQUETE while the other
     lands ENCOLHE on them. They cancel, they do not stack.
   - **effects outlive the round** (only `phase_begin()` clears them), unlike the
@@ -375,9 +378,9 @@ live in `src/config.h`.
     / `VOLLEY_VY_Q`) so the arc clears `NET_TOP` with ~25 px to spare — measured in the
     sim, it crosses the net at y≈80 against a net top of 112. Changing either needs a
     re-measure of both the clearance and where the ball lands.
-- **Ball tunneling is bounded by paddle width + ball size** (3 + 3 = 6 px) vs the
-  max step `BALL_SPEED_MAX_Q` = 5 px/frame. Raising the max speed past 6 px/frame
-  needs swept collision, not just a bigger constant.
+- **Collision checks must cover the path, not only the final position.** Integer
+  pixel truncation lets even 5.5 px/frame tunnel through a 3 px paddle. Keep the
+  substeps in `physics()` and the all-Q8-alignment regression for both players.
 - **Pick the bounce face from the crossing, not from the velocity and not from the
   smallest penetration.** Both of the simpler rules were shipped and both were wrong,
   in opposite directions:

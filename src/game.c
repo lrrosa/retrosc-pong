@@ -101,8 +101,8 @@ static int32_t vx_from_vy(int32_t vy_frac, int32_t speed_q) {
 }
 
 // Velocidade com que a bola sai de uma rebatida: a normal, ou a turbinada
-// enquanto durar o pique do BONUS_TURBO. O teto TURBO_MAX_Q nao e estetico --
-// acima dele a bola atravessa a raquete sem tocar nela (ver config.h).
+// enquanto durar o pique do BONUS_TURBO. TURBO_MAX_Q limita a dificuldade;
+// os subpassos de physics() impedem que a bola atravesse as raquetes.
 static int32_t velocidade_saida(void) {
     if (turbo_frames <= 0) return ball_speed_q;
     int32_t v = ball_speed_q + TURBO_EXTRA_Q;
@@ -321,28 +321,11 @@ static void add_point(int player) {
     set_state(GS_ROUND_END);
 }
 
-static void physics(void) {
+static void physics_step(int32_t dx, int32_t dy) {
     uint32_t f = phase_flags();
     int32_t prev_x = ball_x, prev_y = ball_y;
-
-    // Fim do pique do turbo: a bola volta a velocidade normal mantendo a
-    // direcao. Sem reescalar aqui ela so desaceleraria na proxima rebatida.
-    if (turbo_frames > 0) {
-        int32_t vel = velocidade_saida();
-        if (--turbo_frames == 0 && vel > 0) {
-            int32_t vy = (ball_vy * ball_speed_q) / vel;
-            int32_t vx = vx_from_vy(vy, ball_speed_q);
-            ball_vy = vy;
-            ball_vx = (ball_vx < 0) ? -vx : +vx;
-        }
-    }
-
-    if (f & PF_GRAVITY) {
-        ball_vy += GRAVITY_Q;
-        if (ball_vy > BALL_VY_MAX_Q) ball_vy = BALL_VY_MAX_Q;
-    }
-    ball_x += ball_vx;
-    ball_y += ball_vy;
+    ball_x += dx;
+    ball_y += dy;
 
     // Topo
     if (ball_y < 0) { ball_y = 0; ball_vy = -ball_vy; audio_wall_hit(); }
@@ -415,6 +398,41 @@ static void physics(void) {
         bx = ball_x >> 8;
         if (bx + BALL_SIZE < 0)   add_point(1);
         else if (bx > FB_WIDTH)   add_point(0);
+    }
+}
+
+static void physics(void) {
+    // Cronometros e gravidade continuam sendo atualizados uma vez por frame.
+    if (turbo_frames > 0) {
+        int32_t vel = velocidade_saida();
+        if (--turbo_frames == 0 && vel > 0) {
+            int32_t vy = (ball_vy * ball_speed_q) / vel;
+            int32_t vx = vx_from_vy(vy, ball_speed_q);
+            ball_vy = vy;
+            ball_vx = (ball_vx < 0) ? -vx : +vx;
+        }
+    }
+    if (phase_flags() & PF_GRAVITY) {
+        ball_vy += GRAVITY_Q;
+        if (ball_vy > BALL_VY_MAX_Q) ball_vy = BALL_VY_MAX_Q;
+    }
+
+    // Passos curtos impedem que o turbo pule uma raquete ou que uma colisao
+    // com o escudo atras dela seja processada antes do toque na raquete.
+    // Guardar os restos da divisao conserva o deslocamento Q8 do frame.
+    int maior = abs_i(ball_vx);
+    if (abs_i(ball_vy) > maior) maior = abs_i(ball_vy);
+    int passos = (maior + 255) / 256;
+    if (passos < 1) passos = 1;
+    int32_t resto_x = 0, resto_y = 0;
+    for (int i = 0; i < passos; i++) {
+        resto_x += ball_vx;
+        resto_y += ball_vy;
+        int32_t dx = resto_x / passos, dy = resto_y / passos;
+        resto_x %= passos;
+        resto_y %= passos;
+        physics_step(dx, dy);
+        if (state != GS_PLAY) return;
     }
 }
 
@@ -702,7 +720,7 @@ static void draw_phase_end(void) {
 }
 
 static void draw_game_over(void) {
-    char buf[32];
+    char buf[40];
     gfx_clear(0);
 
     center_text(24, "FIM DE JOGO", 2);
@@ -838,6 +856,9 @@ static void enter_attract(void) {
 }
 
 static void open_menu(void) {
+    // A tabela tambem abre o menu depois de uma partida: nesse caminho a
+    // bola ainda esta fora da quadra, com a velocidade da ultima jogada.
+    if (state != GS_ATTRACT) enter_attract();
     menu_sel  = MODE_ARCADE;
     menu_idle = 0;
     input_reset_movement();
