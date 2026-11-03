@@ -307,6 +307,31 @@ até o shield do RCA de vídeo. Ele drena microamperes (ver
 [Aterramento em estrela](#alimentação)), ao contrário do retorno do amp, que
 precisa de fio próprio. Na PCB a questão nem se coloca: o GND é um plano.
 
+### Se o SELETOR "se pressiona sozinho"
+
+O firmware filtra o pino em três camadas (8 leituras por frame decididas por
+maioria, 3 frames confirmando a mudança e 6 frames de carência depois de cada
+borda aceita — ver `input.c`). Isso cobre o ruído do próprio sinal composto e do
+PWM do áudio, que é o caso que uma leitura única por frame tomava por pressão.
+
+O que o firmware **não** cobre é o pino viver perto do limiar. Pendurado só no
+pull-up interno de **~60 kΩ**, uma fuga de 30 kΩ para GND — resíduo de fluxo de
+solda, poeira com umidade nos terminais, isolação do cabo prensada pelo painel —
+já o deixa em 1,65 V, em cima do limiar, e o botão continua passando em qualquer
+teste de continuidade. Se as pressões fantasma persistirem:
+
+1. **Desligue o cabo do J7** e deixe o GP22 só no pull-up interno, com o jogo
+   rodando. Se continuar, o ruído entra na placa; se parar, é o cabo, o botão ou
+   a fiação do painel.
+2. Acrescente, do lado da placa, **4,7 kΩ de GP22 para 3V3** e **100 nF de GP22
+   para GND**. O pull-up externo põe a mesma fuga de 30 kΩ em 2,85 V, e o
+   capacitor dá ~0,5 ms de constante de tempo. Um **220 Ω em série** com o pino
+   limita a corrente de ESD que vem do painel.
+3. Use **par trançado**: GP22 com o seu próprio fio de GND, passando longe da
+   saída do amplificador e do cabo de vídeo.
+4. **Aterre a chapa de alumínio** ao GND do circuito. Em tempo seco, a descarga
+   de quem encosta no painel acopla direto no fio do botão.
+
 ## Alimentação
 
 - USB do Pico (5 V): suficiente para o RP2040 e os 2 potenciômetros.

@@ -20,7 +20,21 @@ void gpio_init(unsigned p) { (void)p; }
 void gpio_set_dir(unsigned p, bool v) { (void)p; (void)v; }
 void gpio_put(unsigned p, bool v) { (void)p; (void)v; }
 void gpio_pull_up(unsigned p) { (void)p; }
-bool gpio_get(unsigned p) { (void)p; return !pressed; }
+// O botao e lido varias vezes por frame: read_pattern injeta ruido DENTRO do
+// frame (um valor por leitura, ciclico), que e justamente o caso que uma
+// leitura unica por frame tomava por pressao. Sem padrao, o frame inteiro vale
+// `pressed`.
+static const bool *read_pattern;
+static unsigned read_pattern_len, read_index;
+bool gpio_get(unsigned p) {
+    (void)p;
+    if (read_pattern) return !read_pattern[read_index++ % read_pattern_len];
+    return !pressed;
+}
+void busy_wait_us_32(uint32_t us) { (void)us; }
+static void set_read_pattern(const bool *pat, unsigned len) {
+    read_pattern = pat; read_pattern_len = len; read_index = 0;
+}
 void adc_init(void) {}
 void adc_gpio_init(unsigned p) { (void)p; }
 void adc_select_input(unsigned c) { adc_channel = c; }
@@ -95,18 +109,69 @@ static void test_input(void) {
     assert(input_paddle_y(1, 168) == 168);
 }
 
-static void test_button(void) {
-    setup(PHASE_CLASSICO);
-    // A single sampled glitch is not a press; release bounce cannot re-arm.
-    const bool sequence[] = {true, false, true, true, true, false, true, true,
-                             false, false, false, true, true, true};
-    int edges = 0;
-    for (unsigned i = 0; i < sizeof(sequence) / sizeof(*sequence); i++) {
-        pressed = sequence[i]; input_poll();
-        if (input_seletor_pressed()) edges++;
+static int button_edges;
+
+// Roda n frames com o botao em `state` e acumula as bordas vistas.
+static void button_frames(bool state, int n) {
+    for (int i = 0; i < n; i++) {
+        pressed = state;
+        input_sample_button();   // fim do frame anterior, como em main.c
+        input_poll();
+        if (input_seletor_pressed()) button_edges++;
     }
-    assert(edges == 2);
-    pressed = true; input_init(); input_poll();
+}
+
+static void test_button(void) {
+    _Static_assert(BUTTON_SAMPLES == 8, "os padroes de ruido abaixo supoem 8 leituras");
+    setup(PHASE_CLASSICO);
+    button_edges = 0;
+
+    // Repique curto nao e pressao: a janela pede BUTTON_STABLE_FRAMES frames.
+    button_frames(false, 5);
+    button_frames(true, 1); button_frames(false, 5);
+    button_frames(true, 2); button_frames(false, 5);
+    assert(button_edges == 0);
+
+    // Pressao de verdade da UMA borda, no frame que a confirma.
+    button_frames(true, 10);
+    assert(button_edges == 1);
+
+    // Repique na soltura nao rearma...
+    button_frames(false, 1); button_frames(true, 1); button_frames(false, 10);
+    assert(button_edges == 1);
+    // ... e a pressao seguinte ainda e vista.
+    button_frames(true, 10);
+    assert(button_edges == 2);
+
+    // Lockout: um eco de ruido nos frames seguintes a uma borda nao vira a
+    // segunda pressao que ele seria sem lockout (2*BUTTON_STABLE_FRAMES).
+    setup(PHASE_CLASSICO); button_edges = 0;
+    button_frames(true, BUTTON_STABLE_FRAMES);
+    assert(button_edges == 1);
+    button_frames(false, BUTTON_STABLE_FRAMES);
+    button_frames(true, BUTTON_STABLE_FRAMES);
+    assert(button_edges == 1);
+
+    // Ruido DENTRO do frame, em minoria: o pino cai em 3 das 8 leituras, todo
+    // frame. Uma leitura unica por frame cai sempre na mesma fase e ve pressao
+    // onde nao houve -- e o defeito que este debounce cobre; a maioria nao ve.
+    static const bool minoria[8] =
+        { true, false, true, false, false, false, true, false };
+    setup(PHASE_CLASSICO); button_edges = 0;
+    set_read_pattern(minoria, 8);
+    button_frames(false, 30);
+    assert(button_edges == 0);
+
+    // A mesma rajada com 6 das 8 leituras baixas e pressao legitima.
+    static const bool maioria[8] =
+        { true, true, false, true, true, false, true, true };
+    set_read_pattern(maioria, 8);
+    button_frames(false, 5);
+    assert(button_edges == 1);
+    set_read_pattern(NULL, 0);
+
+    // Botao preso desde o boot nao gera borda.
+    pressed = true; input_init(); input_sample_button(); input_poll();
     assert(!input_seletor_pressed());
 }
 

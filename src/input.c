@@ -10,7 +10,14 @@
 #define FILTER_ALPHA  3                 // suaviza: novo = (3*ant + novo)/4
 #define MOVE_THRESH   40                // delta minimo (em unidades ADC) p/ "moveu"
 #define MOVE_HISTORY  20                // janela de frames para detectar movimento
-#define BUTTON_STABLE_FRAMES 2         // confirma pressao e soltura sem repiques
+// Debounce do SELETOR, em tres camadas: maioria dentro do frame
+// (button_read_majority), confirmacao ao longo de varios frames e lockout
+// depois de uma borda aceita (as duas ultimas em input_poll).
+#define BUTTON_SAMPLES        8         // leituras do pino por frame
+#define BUTTON_SAMPLE_GAP_US  71        // ~1,125 linha de video entre leituras
+#define BUTTON_MAJORITY       5         // leituras baixas para o frame contar premido
+#define BUTTON_STABLE_FRAMES  3         // frames confirmando pressao e soltura
+#define BUTTON_LOCKOUT_FRAMES 6         // frames sem reavaliar apos uma borda aceita
 
 static uint16_t raw[2]      = { 2048, 2048 };
 static uint16_t filtered[2] = { 2048, 2048 };
@@ -21,6 +28,38 @@ static int last_moved_player = 0;
 static bool last_button = false;
 static bool button_edge = false;
 static unsigned button_samples;
+static unsigned button_lockout;
+static bool button_frame_state;        // resultado da ultima rajada de leituras
+
+// Estado do botao, decidido por MAIORIA de varias leituras.
+//
+// Uma leitura unica por frame nao filtra ruido nenhum: input_poll() roda sempre
+// no mesmo ponto do quadro (logo depois de ntsc_wait_vsync(), que e justamente
+// quando o PIO e o DMA reiniciam o frame), entao ruido periodico vindo do
+// proprio sinal composto ou do PWM do audio cai sempre na MESMA fase -- sai
+// igual em todos os frames, e o debounce por frames passa por cima dele sem
+// ver. Era o bastante para o jogo se comportar como se o SELETOR estivesse
+// sendo premido sozinho, sendo que o botao estava bom.
+//
+// O remedio e varrer o periodo de linha (63,5 us) em vez de espiar um ponto
+// dele: BUTTON_SAMPLE_GAP_US e 1,125 linha, ou seja, cada leitura cai 1/8 de
+// linha adiante da anterior e as 8 cobrem a linha inteira em fases diferentes.
+// Custa 7*71 us = 497 us, 3% do frame -- gastos no fim dele, nao no comeco.
+//
+// Isso cobre o ruido de linha e o do audio. Ruido travado na frequencia do
+// FRAME (os 60 Hz da rede, por exemplo) cai na mesma fase de qualquer maneira,
+// e ai o remedio e hardware: pull-up externo de 4,7 kOhm em paralelo com os
+// ~60 kOhm internos, com 100 nF para GND (ver docs/schematic.md).
+//
+// Quem chama e input_sample_button(), no FIM do frame -- nao aqui, no comeco.
+static bool button_read_majority(void) {
+    unsigned low = 0;
+    for (unsigned i = 0; i < BUTTON_SAMPLES; i++) {
+        if (i) busy_wait_us_32(BUTTON_SAMPLE_GAP_US);
+        if (!gpio_get(SELETOR_BUTTON_PIN)) low++;   // pull-up: premido = LOW
+    }
+    return low >= BUTTON_MAJORITY;
+}
 
 void input_init(void) {
     // Forca o SMPS da placa Pico em modo PWM (GPIO23 alto) para reduzir o
@@ -44,8 +83,10 @@ void input_init(void) {
     for (int i = 0; i < 2; i++) filter_q8[i] = (uint32_t)filtered[i] * 256;
     moved_frames = 0;
     last_moved_player = 0;
-    last_button = !gpio_get(SELETOR_BUTTON_PIN);
+    button_frame_state = button_read_majority();
+    last_button = button_frame_state;
     button_samples = 0;
+    button_lockout = 0;
     button_edge = false;
 }
 
@@ -67,15 +108,36 @@ void input_poll(void) {
     }
     if (moved_frames > 0) moved_frames--;
 
-    bool now = !gpio_get(SELETOR_BUTTON_PIN);   // pull-up: pressed = LOW
+    bool now = button_frame_state;
     button_edge = false;
-    if (now == last_button) {
+    if (button_lockout > 0) {
+        // Borda aceita agora mesmo: nao reavalia nada por alguns frames. Sem
+        // isso um eco de ruido logo depois da pressao (soltura falsa seguida de
+        // pressao falsa) virava uma segunda borda em 2*BUTTON_STABLE_FRAMES, e
+        // um toque so pulava duas telas. 6 frames de lockout mais os 3 da
+        // confirmacao poem o rearme em 150 ms -- metade do intervalo de quem
+        // aperta rapido, e a tela de iniciais pede tres toques seguidos.
+        button_lockout--;
+        button_samples = 0;
+    } else if (now == last_button) {
         button_samples = 0;
     } else if (++button_samples >= BUTTON_STABLE_FRAMES) {
         last_button = now;
         button_samples = 0;
         button_edge = now;
+        if (now) button_lockout = BUTTON_LOCKOUT_FRAMES;
     }
+}
+
+// A rajada de leituras do botao, chamada no FIM do frame (main.c), depois de
+// game_frame(). Ela para a CPU por (BUTTON_SAMPLES-1)*BUTTON_SAMPLE_GAP_US = 497 us,
+// e no comeco do frame esse tempo e caro: entre o vsync e a primeira linha ativa
+// cabem so (LINES_VSYNC + LINES_TOP_BLANK) * 63,5 us = 2,4 ms, que e a margem
+// que o desenho tem para ficar a frente do feixe do DMA. No fim do frame sobram
+// ~14 ms ociosos. O preco e a borda ser decidida no input_poll() do frame
+// seguinte: um frame de latencia, 17 ms, que ninguem sente num push-button.
+void input_sample_button(void) {
+    button_frame_state = button_read_majority();
 }
 
 int input_pot_raw(int player) {

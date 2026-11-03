@@ -18,6 +18,11 @@ int input_paddle_y(int player, int range);
 // Valor cru filtrado do pot 0..4095 (para entrada de iniciais).
 int input_pot_raw(int player);
 
+// Le o botao SELETOR varias vezes e guarda a decisao por maioria. Chamar uma
+// vez por frame, no FIM dele (a rajada para a CPU por ~0,5 ms); input_poll()
+// consome essa decisao no frame seguinte.
+void input_sample_button(void);
+
 // Botao SELETOR pressionado neste frame (borda apos debounce).
 bool input_seletor_pressed(void);
 

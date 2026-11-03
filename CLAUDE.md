@@ -239,8 +239,14 @@ one is a blit (`retrosc_mascote_data`) and the other is drawn from rectangles at
 **Input** (`input.{c,h}`): ADC poll with an IIR filter. `input_paddle_y(player, range)`
 maps ADC→paddle position over a phase-dependent range; `input_pot_raw(player)` is used
 for initials and menu; `input_last_moved()` tells the menu which pot to read;
-`input_seletor_pressed()` is the SELETOR edge. Also forces the Pico SMPS into PWM mode
-(GPIO23 high) for a cleaner ADC supply.
+`input_seletor_pressed()` is the SELETOR edge, debounced in **three layers**:
+`BUTTON_SAMPLES` (8) reads per frame, `BUTTON_SAMPLE_GAP_US` (71 µs) apart, decided by
+`BUTTON_MAJORITY` (5); then `BUTTON_STABLE_FRAMES` (3) frames confirming the change;
+then `BUTTON_LOCKOUT_FRAMES` (6) frames of not re-evaluating after an accepted edge
+(see the gotcha below). The read burst is `input_sample_button()`, which `main.c` calls
+**after** `game_frame()`, not in `input_poll()` — it stops the CPU for ~0.5 ms, and at
+the start of the frame that time belongs to the drawing. Also forces the Pico SMPS into
+PWM mode (GPIO23 high) for a cleaner ADC supply.
 
 **High scores** (`highscores.{c,h}`): the top `HISCORE_COUNT` (**9** — what the
 screen holds, one line per 14 px from y=36 to y=148), persisted in the **last flash
@@ -338,6 +344,30 @@ live in `src/config.h`.
   shows an empty court. REBOUND scores on the *floor*, and the ball used to stop there
   with a stripe of pixels still poking out of the bottom edge; `physics()` now parks it
   at `FB_HEIGHT` before `add_point()`.
+- **One GPIO read per frame is not a debounce.** `input_poll()` runs at a fixed point in
+  the frame — right after `ntsc_wait_vsync()`, which is exactly when the PIO and DMA
+  restart the frame — so reading the SELETOR once per frame reads it at the **same phase
+  of the video every time**: periodic noise from the composite output or the audio PWM
+  comes out identical in every frame, and a frame-counting debounce passes straight over
+  it. On the cabinet the game behaved as if the SELETOR were being held down while the
+  button itself measured fine. The fix is to sweep the line period instead of peeking at
+  one point of it: 8 reads 71 µs apart (1.125 line, so each read lands 1/8 of a line
+  further along and the 8 cover the whole line in different phases), decided by majority,
+  for 497 µs — 3 % of the frame, all at the start of it. `BUTTON_LOCKOUT_FRAMES` then
+  keeps a noise echo right after an accepted edge from becoming a second press and
+  skipping two screens on one touch; 6 lockout frames plus the 3 of confirmation put the
+  re-arm at 150 ms, and the initials screen needs three presses in a row.
+  The burst runs at the **end** of the frame (`input_sample_button()` after
+  `game_frame()`), because only `(LINES_VSYNC + LINES_TOP_BLANK) * 63.5 µs` = **2.4 ms**
+  separate the vsync from the first active line, and that is the margin the drawing has
+  to stay ahead of the DMA's beam — spending 497 µs of it on a button would be 20 % of
+  the margin for nothing, while the end of the frame has ~14 ms idle. The cost is one
+  frame of latency on the edge.
+  What this does **not** cover is noise locked to the *frame* rate (mains hum), which
+  lands in the same phase no matter how you sample. That one is hardware: the pin hangs
+  on the RP2040's ~60 kΩ internal pull-up, so a leakage path of merely ~30 kΩ (flux
+  residue, dust with humidity, a wire pinched by the panel) already parks it at the
+  threshold. See [docs/schematic.md](docs/schematic.md).
 - **The gameplay beeps are short, and a small TV speaker will not play them.** This
   cost three wrong diagnoses, so the order matters. What *was* real in the firmware:
   `clkdiv` saturates at 255, so with a 10-bit `PWM_TOP` no tone could go below 478 Hz,

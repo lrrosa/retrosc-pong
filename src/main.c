@@ -30,6 +30,7 @@ int main(void) {
         input_poll();
         audio_tick_frame();
         game_frame();
+        input_sample_button();   // no fim do frame: a rajada custa ~0,5 ms de CPU
     }
     return 0;
 }
