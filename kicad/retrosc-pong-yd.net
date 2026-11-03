@@ -2,7 +2,7 @@
 	(version "E")
 	(design
 		(source "F:\\downloads\\_montagens - kits\\Pong para RP2040\\pong-rp2040\\kicad\\retrosc-pong-yd.kicad_sch")
-		(date "2026-08-19T01:19:39")
+		(date "2026-11-03T00:12:25")
 		(tool "Eeschema 10.0.4")
 		(sheet
 			(number "1")
@@ -93,7 +93,7 @@
 				(names "/")
 				(tstamps "/")
 			)
-			(tstamps "b2f06917-b74f-4a03-83c1-9b664e6886c1")
+			(tstamps "d0faa3f1-17af-405f-8ee1-7073b411898a")
 			(units
 				(unit
 					(name "A")
@@ -147,7 +147,7 @@
 				(names "/")
 				(tstamps "/")
 			)
-			(tstamps "8896a0ac-06b2-46ac-bf82-cb979819aaa8")
+			(tstamps "175dc0a3-07e7-4e54-9e97-8d8f417f0e01")
 			(units
 				(unit
 					(name "A")
@@ -201,7 +201,7 @@
 				(names "/")
 				(tstamps "/")
 			)
-			(tstamps "f2fdcad8-e573-469d-8c84-0de0c415c41e")
+			(tstamps "777109c5-26c7-46a7-b0b1-fae3f2196542")
 			(units
 				(unit
 					(name "A")
@@ -255,7 +255,61 @@
 				(names "/")
 				(tstamps "/")
 			)
-			(tstamps "bb5fe5fb-072a-4164-9db3-1ece0f9c7923")
+			(tstamps "e7dcb132-4344-41ca-aaef-6885ff39e4bc")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "C5")
+			(value "100n")
+			(footprint "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
+			(fields
+				(field
+					(name "Footprint") "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm")
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "Device")
+				(part "C")
+				(description "Unpolarized capacitor")
+			)
+			(property
+				(name "Sheetname")
+				(value "retrosc-pong-yd")
+			)
+			(property
+				(name "Sheetfile")
+				(value "retrosc-pong-yd.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "cap capacitor")
+			)
+			(property
+				(name "ki_fp_filters")
+				(value "C_*")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "76ba6fcd-e890-4504-9a44-b7607dd43e75")
 			(units
 				(unit
 					(name "A")
@@ -309,7 +363,7 @@
 				(names "/")
 				(tstamps "/")
 			)
-			(tstamps "389c9c1f-c8b3-46ce-a370-cd66a1ed8c47")
+			(tstamps "ebe31456-bbf0-4615-bec2-8d002db6b244")
 			(units
 				(unit
 					(name "A")
@@ -363,7 +417,7 @@
 				(names "/")
 				(tstamps "/")
 			)
-			(tstamps "1a2110d1-e4b2-48c5-ae83-0d573c1d09aa")
+			(tstamps "571d7835-d15d-4242-8361-34e0f94e1a34")
 			(units
 				(unit
 					(name "A")
@@ -429,7 +483,7 @@
 				(names "/")
 				(tstamps "/")
 			)
-			(tstamps "42ee0b76-b209-4691-bcbb-840dff573ac3")
+			(tstamps "4168d8f7-ab22-46c2-adf8-eba404696d80")
 			(units
 				(unit
 					(name "A")
@@ -486,7 +540,7 @@
 				(names "/")
 				(tstamps "/")
 			)
-			(tstamps "ff0085f0-2a86-4d13-bd2f-c9bb6730242a")
+			(tstamps "1d7afd14-fe60-463c-9393-590018662290")
 			(units
 				(unit
 					(name "A")
@@ -543,7 +597,7 @@
 				(names "/")
 				(tstamps "/")
 			)
-			(tstamps "a534d423-35ca-4b83-914e-cbea9f23b22a")
+			(tstamps "444fb4c3-2dd4-43f2-956f-624eaf28bc4d")
 			(units
 				(unit
 					(name "A")
@@ -597,7 +651,7 @@
 				(names "/")
 				(tstamps "/")
 			)
-			(tstamps "fb903747-326a-4b25-935d-5845b9e7d288")
+			(tstamps "20d9d166-39f4-462d-8dff-3aa147008048")
 			(units
 				(unit
 					(name "A")
@@ -651,7 +705,7 @@
 				(names "/")
 				(tstamps "/")
 			)
-			(tstamps "e08c757f-4834-4c77-b889-c6903233c64c")
+			(tstamps "0da9f814-a67b-4cd3-aa0d-d22d8f177dea")
 			(units
 				(unit
 					(name "A")
@@ -705,7 +759,7 @@
 				(names "/")
 				(tstamps "/")
 			)
-			(tstamps "0a6f6fe8-981d-4570-89f1-7ccfa971e8a4")
+			(tstamps "63f9c198-775c-45d7-b740-e58cd06606bf")
 			(units
 				(unit
 					(name "A")
@@ -759,7 +813,7 @@
 				(names "/")
 				(tstamps "/")
 			)
-			(tstamps "fb658a7d-954c-41cc-842d-e124e1b83443")
+			(tstamps "a50171b1-1505-42bf-a43b-28e1e56372e3")
 			(units
 				(unit
 					(name "A")
@@ -813,7 +867,7 @@
 				(names "/")
 				(tstamps "/")
 			)
-			(tstamps "27fba429-1b5e-440a-92a7-8dc3fa6c84c9")
+			(tstamps "323f0e2e-3c60-434b-a672-718774f6b4bd")
 			(units
 				(unit
 					(name "A")
@@ -867,7 +921,7 @@
 				(names "/")
 				(tstamps "/")
 			)
-			(tstamps "716af847-c661-4c68-9757-44801a384024")
+			(tstamps "606943b9-602a-451d-8b55-8e8f58835904")
 			(units
 				(unit
 					(name "A")
@@ -921,7 +975,7 @@
 				(names "/")
 				(tstamps "/")
 			)
-			(tstamps "c5fcc0f4-705d-451f-902c-b2627f334899")
+			(tstamps "67b12dfb-c41f-4e2b-9426-1b657dbbcf15")
 			(units
 				(unit
 					(name "A")
@@ -975,7 +1029,7 @@
 				(names "/")
 				(tstamps "/")
 			)
-			(tstamps "e1c0ed8e-2d29-40b4-a65b-94b8d06919b8")
+			(tstamps "18cf3b73-0e55-4360-b458-810614f299f1")
 			(units
 				(unit
 					(name "A")
@@ -1029,7 +1083,115 @@
 				(names "/")
 				(tstamps "/")
 			)
-			(tstamps "99216f54-78f5-4905-ae85-27f6125ba739")
+			(tstamps "a761dad5-627d-435c-9565-35ed04c6220e")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "R8")
+			(value "4k7")
+			(footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P2.54mm_Vertical")
+			(fields
+				(field
+					(name "Footprint") "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P2.54mm_Vertical")
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "Device")
+				(part "R")
+				(description "Resistor")
+			)
+			(property
+				(name "Sheetname")
+				(value "retrosc-pong-yd")
+			)
+			(property
+				(name "Sheetfile")
+				(value "retrosc-pong-yd.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "R res resistor")
+			)
+			(property
+				(name "ki_fp_filters")
+				(value "R_*")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "2337f32d-88e6-4354-b6ad-ff37a721c381")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "R9")
+			(value "220")
+			(footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P2.54mm_Vertical")
+			(fields
+				(field
+					(name "Footprint") "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P2.54mm_Vertical")
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "Device")
+				(part "R")
+				(description "Resistor")
+			)
+			(property
+				(name "Sheetname")
+				(value "retrosc-pong-yd")
+			)
+			(property
+				(name "Sheetfile")
+				(value "retrosc-pong-yd.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "R res resistor")
+			)
+			(property
+				(name "ki_fp_filters")
+				(value "R_*")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "07253807-db5a-401c-928c-72de336f4a65")
 			(units
 				(unit
 					(name "A")
@@ -1083,7 +1245,7 @@
 				(names "/")
 				(tstamps "/")
 			)
-			(tstamps "09743190-46d3-4c7e-b197-1e4626723bdd")
+			(tstamps "6b7b6626-43b1-47e9-aebd-e477d5d861e3")
 			(units
 				(unit
 					(name "A")
@@ -1251,7 +1413,7 @@
 				(names "/")
 				(tstamps "/")
 			)
-			(tstamps "aa3765c8-4512-4bf4-b8b7-442e7602d39b")
+			(tstamps "03563dd9-d90e-4872-9e0d-a8d8e4f6ab14")
 			(units
 				(unit
 					(name "A")
@@ -1976,6 +2138,11 @@
 				(pintype "passive")
 			)
 			(node
+				(ref "R8")
+				(pin "1")
+				(pintype "passive")
+			)
+			(node
 				(ref "U1")
 				(pin "36")
 				(pinfunction "Pin_36_36")
@@ -2152,6 +2319,11 @@
 			(class "Default")
 			(node
 				(ref "C1")
+				(pin "2")
+				(pintype "passive")
+			)
+			(node
+				(ref "C5")
 				(pin "2")
 				(pintype "passive")
 			)
@@ -2365,9 +2537,18 @@
 			(name "/START")
 			(class "Default")
 			(node
-				(ref "J7")
+				(ref "C5")
 				(pin "1")
-				(pinfunction "Pin_1_1")
+				(pintype "passive")
+			)
+			(node
+				(ref "R8")
+				(pin "2")
+				(pintype "passive")
+			)
+			(node
+				(ref "R9")
+				(pin "2")
 				(pintype "passive")
 			)
 			(node
@@ -2379,6 +2560,22 @@
 		)
 		(net
 			(code "19")
+			(name "/START_SW")
+			(class "Default")
+			(node
+				(ref "J7")
+				(pin "1")
+				(pinfunction "Pin_1_1")
+				(pintype "passive")
+			)
+			(node
+				(ref "R9")
+				(pin "1")
+				(pintype "passive")
+			)
+		)
+		(net
+			(code "20")
 			(name "/SYNC")
 			(class "Default")
 			(node
@@ -2394,7 +2591,7 @@
 			)
 		)
 		(net
-			(code "20")
+			(code "21")
 			(name "/VIDEO")
 			(class "Default")
 			(node
@@ -2410,7 +2607,7 @@
 			)
 		)
 		(net
-			(code "21")
+			(code "22")
 			(name "unconnected-(U1-Pin_1-Pad1)")
 			(class "Default")
 			(node
@@ -2421,7 +2618,7 @@
 			)
 		)
 		(net
-			(code "22")
+			(code "23")
 			(name "unconnected-(U1-Pin_2-Pad2)")
 			(class "Default")
 			(node
@@ -2432,7 +2629,7 @@
 			)
 		)
 		(net
-			(code "23")
+			(code "24")
 			(name "unconnected-(U1-Pin_3-Pad3)")
 			(class "Default")
 			(node
@@ -2443,7 +2640,7 @@
 			)
 		)
 		(net
-			(code "24")
+			(code "25")
 			(name "unconnected-(U1-Pin_4-Pad4)")
 			(class "Default")
 			(node
@@ -2454,7 +2651,7 @@
 			)
 		)
 		(net
-			(code "25")
+			(code "26")
 			(name "unconnected-(U1-Pin_5-Pad5)")
 			(class "Default")
 			(node
@@ -2465,7 +2662,7 @@
 			)
 		)
 		(net
-			(code "26")
+			(code "27")
 			(name "unconnected-(U1-Pin_7-Pad7)")
 			(class "Default")
 			(node
@@ -2476,7 +2673,7 @@
 			)
 		)
 		(net
-			(code "27")
+			(code "28")
 			(name "unconnected-(U1-Pin_8-Pad8)")
 			(class "Default")
 			(node
@@ -2487,7 +2684,7 @@
 			)
 		)
 		(net
-			(code "28")
+			(code "29")
 			(name "unconnected-(U1-Pin_9-Pad9)")
 			(class "Default")
 			(node
@@ -2498,7 +2695,7 @@
 			)
 		)
 		(net
-			(code "29")
+			(code "30")
 			(name "unconnected-(U1-Pin_10-Pad10)")
 			(class "Default")
 			(node
@@ -2509,7 +2706,7 @@
 			)
 		)
 		(net
-			(code "30")
+			(code "31")
 			(name "unconnected-(U1-Pin_11-Pad11)")
 			(class "Default")
 			(node
@@ -2520,7 +2717,7 @@
 			)
 		)
 		(net
-			(code "31")
+			(code "32")
 			(name "unconnected-(U1-Pin_12-Pad12)")
 			(class "Default")
 			(node
@@ -2531,7 +2728,7 @@
 			)
 		)
 		(net
-			(code "32")
+			(code "33")
 			(name "unconnected-(U1-Pin_13-Pad13)")
 			(class "Default")
 			(node
@@ -2542,7 +2739,7 @@
 			)
 		)
 		(net
-			(code "33")
+			(code "34")
 			(name "unconnected-(U1-Pin_14-Pad14)")
 			(class "Default")
 			(node
@@ -2553,7 +2750,7 @@
 			)
 		)
 		(net
-			(code "34")
+			(code "35")
 			(name "unconnected-(U1-Pin_16-Pad16)")
 			(class "Default")
 			(node
@@ -2564,7 +2761,7 @@
 			)
 		)
 		(net
-			(code "35")
+			(code "36")
 			(name "unconnected-(U1-Pin_17-Pad17)")
 			(class "Default")
 			(node
@@ -2575,7 +2772,7 @@
 			)
 		)
 		(net
-			(code "36")
+			(code "37")
 			(name "unconnected-(U1-Pin_18-Pad18)")
 			(class "Default")
 			(node
@@ -2586,7 +2783,7 @@
 			)
 		)
 		(net
-			(code "37")
+			(code "38")
 			(name "unconnected-(U1-Pin_22-Pad22)")
 			(class "Default")
 			(node
@@ -2597,7 +2794,7 @@
 			)
 		)
 		(net
-			(code "38")
+			(code "39")
 			(name "unconnected-(U1-Pin_23-Pad23)")
 			(class "Default")
 			(node
@@ -2608,7 +2805,7 @@
 			)
 		)
 		(net
-			(code "39")
+			(code "40")
 			(name "unconnected-(U1-Pin_24-Pad24)")
 			(class "Default")
 			(node
@@ -2619,7 +2816,7 @@
 			)
 		)
 		(net
-			(code "40")
+			(code "41")
 			(name "unconnected-(U1-Pin_26-Pad26)")
 			(class "Default")
 			(node
@@ -2630,7 +2827,7 @@
 			)
 		)
 		(net
-			(code "41")
+			(code "42")
 			(name "unconnected-(U1-Pin_27-Pad27)")
 			(class "Default")
 			(node
@@ -2641,7 +2838,7 @@
 			)
 		)
 		(net
-			(code "42")
+			(code "43")
 			(name "unconnected-(U1-Pin_28-Pad28)")
 			(class "Default")
 			(node
@@ -2652,7 +2849,7 @@
 			)
 		)
 		(net
-			(code "43")
+			(code "44")
 			(name "unconnected-(U1-Pin_32-Pad32)")
 			(class "Default")
 			(node
@@ -2663,7 +2860,7 @@
 			)
 		)
 		(net
-			(code "44")
+			(code "45")
 			(name "unconnected-(U1-Pin_33-Pad33)")
 			(class "Default")
 			(node
@@ -2674,7 +2871,7 @@
 			)
 		)
 		(net
-			(code "45")
+			(code "46")
 			(name "unconnected-(U1-Pin_34-Pad34)")
 			(class "Default")
 			(node
@@ -2685,7 +2882,7 @@
 			)
 		)
 		(net
-			(code "46")
+			(code "47")
 			(name "unconnected-(U1-Pin_37-Pad37)")
 			(class "Default")
 			(node
@@ -2696,7 +2893,7 @@
 			)
 		)
 		(net
-			(code "47")
+			(code "48")
 			(name "unconnected-(U1-Pin_39-Pad39)")
 			(class "Default")
 			(node
@@ -2707,7 +2904,7 @@
 			)
 		)
 		(net
-			(code "48")
+			(code "49")
 			(name "unconnected-(U2-Pin_1-Pad1)")
 			(class "Default")
 			(node
@@ -2718,7 +2915,7 @@
 			)
 		)
 		(net
-			(code "49")
+			(code "50")
 			(name "unconnected-(U2-Pin_2-Pad2)")
 			(class "Default")
 			(node

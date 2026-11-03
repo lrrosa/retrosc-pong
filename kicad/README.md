@@ -146,6 +146,12 @@ redundantes).
   PB-085/3 (2 bossos com furo-guia ø2,5, a 58 mm, no centro do lado de
   85 mm). Em troca, o miolo das bordas de cima e de baixo (x 36,5..43,5)
   fica reservado — nenhum componente pode ocupá-lo.
+- **Filtro do SELETOR na placa:** R9 (220 Ω em série) e C5 (100 nF para o
+  plano de terra) ficam **colados no header J7**, na faixa livre logo acima
+  dele — é no conector que a descarga do painel de alumínio entra, e é ali que
+  ela tem que morrer. O R8 (pull-up externo de 4,7 kΩ) é só DC e ficou com os
+  passivos do áudio, à direita do R6. Por que o filtro existe:
+  [../docs/schematic.md](../docs/schematic.md#botão-seletor).
 - **J5 + J6 (pots)** ficam na mesma fileira com **uma posição vaga** entre
   eles: um único conector fêmea 1×7 (2,54 mm) serve os dois, deixando o
   contato do meio sem uso. Por isso o par é indivisível — e, como não cabia
@@ -181,7 +187,9 @@ redundantes).
   header (ex.: `POT P1 (J5)`), marcas GP17/GP18 **com linha de chamada** até
   o pino exato, e os nomes dos RCAs **na vertical**, encostados em cada jack
   (assim acompanham a altura do conector e não invadem a faixa dos headers).
-  No meio da placa fica a assinatura `RetroSC Pong v1.0` + `LRRosa 2026`. As referências que
+  No meio da placa fica a assinatura `RetroSC Pong v1.0` + `LRRosa 2026` — a
+  segunda linha foi 4 mm para a direita quando o C5 entrou, senão o texto
+  passava por cima de um pad dele. As referências que
   caíam sobre pads (J*, H*) foram ocultadas — a informação está nos rótulos
   descritivos. O logo foi reescalado (0,19 mm/px) para caber **entre** as
   duas linhas verticais do footprint do Pico.

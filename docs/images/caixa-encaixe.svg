@@ -4,33 +4,36 @@
 <rect x="-1.5" y="-1.5" width="85.0" height="73.0" rx="2" fill="#f6f8fa" stroke="#8b949e" stroke-dasharray="1.5 1"/>
 <rect x="0" y="0" width="82.0" height="70.0" rx="1.5" fill="#ffffff" stroke="#24292f" stroke-width="0.4"/>
 <rect x="0.9500000000000028" y="1.9500000000000028" width="80.1" height="66.1" fill="#dff0d8" stroke="#2f6f2f" stroke-width="0.4"/>
-<rect x="35.50" y="18.50" width="5.09" height="3.00" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
-<rect x="35.45" y="10.42" width="5.42" height="5.16" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
+<rect x="35.50" y="36.50" width="5.09" height="3.00" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
+<rect x="70.90" y="41.70" width="20.90" height="12.60" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
+<text x="81.35" y="48.60" text-anchor="middle" font-size="2" fill="#2563eb">J8</text>
+<rect x="56.39" y="60.23" width="8.62" height="3.54" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
+<text x="60.70" y="62.60" text-anchor="middle" font-size="2" fill="#2563eb">J6</text>
+<rect x="2.06" y="1.22" width="21.54" height="52.52" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
+<text x="12.83" y="28.08" text-anchor="middle" font-size="2" fill="#2563eb">U1</text>
+<rect x="25.50" y="22.50" width="5.09" height="3.00" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
+<rect x="45.90" y="-13.10" width="29.60" height="39.70" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
+<text x="60.70" y="7.35" text-anchor="middle" font-size="2" fill="#2563eb">U2</text>
+<rect x="29.00" y="51.50" width="5.09" height="3.00" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
+<rect x="25.95" y="10.50" width="7.10" height="3.00" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
+<rect x="70.90" y="54.70" width="20.90" height="12.60" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
+<text x="81.35" y="61.60" text-anchor="middle" font-size="2" fill="#2563eb">J9</text>
 <rect x="25.50" y="34.50" width="5.09" height="3.00" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
 <rect x="46.23" y="60.23" width="8.62" height="3.54" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
 <text x="50.54" y="62.60" text-anchor="middle" font-size="2" fill="#2563eb">J5</text>
-<rect x="2.06" y="1.22" width="21.54" height="52.52" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
-<text x="12.83" y="28.08" text-anchor="middle" font-size="2" fill="#2563eb">U1</text>
-<rect x="70.90" y="41.70" width="20.90" height="12.60" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
-<text x="81.35" y="48.60" text-anchor="middle" font-size="2" fill="#2563eb">J8</text>
-<rect x="25.23" y="60.23" width="6.09" height="3.54" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
-<text x="28.28" y="62.60" text-anchor="middle" font-size="2" fill="#2563eb">J7</text>
-<rect x="56.39" y="60.23" width="8.62" height="3.54" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
-<text x="60.70" y="62.60" text-anchor="middle" font-size="2" fill="#2563eb">J6</text>
-<rect x="25.95" y="16.50" width="7.10" height="3.00" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
-<rect x="35.50" y="30.50" width="5.09" height="3.00" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
-<rect x="35.50" y="24.50" width="5.09" height="3.00" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
-<rect x="25.50" y="28.50" width="5.09" height="3.00" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
-<rect x="70.90" y="54.70" width="20.90" height="12.60" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
-<text x="81.35" y="61.60" text-anchor="middle" font-size="2" fill="#2563eb">J9</text>
-<rect x="25.50" y="22.50" width="5.09" height="3.00" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
+<rect x="34.45" y="51.50" width="7.10" height="3.00" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
 <rect x="25.95" y="40.50" width="7.10" height="3.00" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
-<rect x="45.90" y="-13.10" width="29.60" height="39.70" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
-<text x="60.70" y="7.35" text-anchor="middle" font-size="2" fill="#2563eb">U2</text>
-<rect x="25.95" y="10.50" width="7.10" height="3.00" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
+<rect x="35.45" y="10.42" width="5.42" height="5.16" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
 <rect x="70.90" y="28.70" width="20.90" height="12.60" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
 <text x="81.35" y="35.60" text-anchor="middle" font-size="2" fill="#2563eb">J1</text>
-<rect x="35.50" y="36.50" width="5.09" height="3.00" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
+<rect x="25.50" y="28.50" width="5.09" height="3.00" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
+<rect x="35.50" y="30.50" width="5.09" height="3.00" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
+<rect x="35.50" y="24.50" width="5.09" height="3.00" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
+<rect x="35.50" y="18.50" width="5.09" height="3.00" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
+<rect x="25.23" y="60.23" width="6.09" height="3.54" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
+<text x="28.28" y="62.60" text-anchor="middle" font-size="2" fill="#2563eb">J7</text>
+<rect x="25.95" y="16.50" width="7.10" height="3.00" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
+<rect x="45.50" y="30.50" width="5.09" height="3.00" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
 <rect x="1.23" y="60.23" width="16.24" height="3.54" fill="#ffffff" fill-opacity="0.65" stroke="#2563eb" stroke-width="0.2"/>
 <text x="9.35" y="62.60" text-anchor="middle" font-size="2" fill="#2563eb">J4</text>
 <circle cx="41.0" cy="6.0" r="2.5" fill="none" stroke="#d1242f" stroke-width="0.3"/>
@@ -38,8 +41,8 @@
 <circle cx="41.0" cy="64.0" r="2.5" fill="none" stroke="#d1242f" stroke-width="0.3"/>
 <circle cx="41.0" cy="64.0" r="1.25" fill="#d1242f"/>
 <line x1="82.00" y1="41.70" x2="82.00" y2="54.30" stroke="#d1242f" stroke-width="1.2" stroke-linecap="round" opacity="0.75"/>
-<line x1="82.00" y1="54.70" x2="82.00" y2="67.30" stroke="#d1242f" stroke-width="1.2" stroke-linecap="round" opacity="0.75"/>
 <line x1="45.90" y1="0.00" x2="75.50" y2="0.00" stroke="#d1242f" stroke-width="1.2" stroke-linecap="round" opacity="0.75"/>
+<line x1="82.00" y1="54.70" x2="82.00" y2="67.30" stroke="#d1242f" stroke-width="1.2" stroke-linecap="round" opacity="0.75"/>
 <line x1="82.00" y1="28.70" x2="82.00" y2="41.30" stroke="#d1242f" stroke-width="1.2" stroke-linecap="round" opacity="0.75"/>
 <text x="0.5" y="35.0" text-anchor="middle" font-size="2.2" fill="#d1242f">1.0</text>
 <text x="81.5" y="35.0" text-anchor="middle" font-size="2.2" fill="#d1242f">1.0</text>
@@ -50,9 +53,9 @@
 <text x="132" y="600" fill="#2f6f2f">Placa 80 x 66 mm — folga 1.0 mm nas laterais, 2.0 mm em cima/embaixo</text>
 <text x="132" y="613" fill="#d1242f">Bossos da tampa (vermelho) a 58 mm: coincidem com os furos da placa (verde)</text>
 <text x="132" y="626" fill="#8b949e">Tracejado = corpo externo (parede ~1,5 mm). Vermelho grosso = recorte necessario na parede.</text>
-<text x="132" y="639" fill="#d1242f">U1 (USB): a face fica 1.2 mm PARA DENTRO da parede — o recorte tem que deixar o plugue entrar (2.7 mm da face externa)</text>
-<text x="132" y="652" fill="#d1242f">J8: passa 8.3 mm da face externa (direita) — furo de parede</text>
-<text x="132" y="665" fill="#d1242f">J9: passa 8.3 mm da face externa (direita) — furo de parede</text>
-<text x="132" y="678" fill="#d1242f">U2: passa 11.6 mm da face externa (cima) — furo de parede</text>
+<text x="132" y="639" fill="#d1242f">J8: passa 8.3 mm da face externa (direita) — furo de parede</text>
+<text x="132" y="652" fill="#d1242f">U1 (USB): a face fica 1.2 mm PARA DENTRO da parede — o recorte tem que deixar o plugue entrar (2.7 mm da face externa)</text>
+<text x="132" y="665" fill="#d1242f">U2: passa 11.6 mm da face externa (cima) — furo de parede</text>
+<text x="132" y="678" fill="#d1242f">J9: passa 8.3 mm da face externa (direita) — furo de parede</text>
 <text x="132" y="691" fill="#d1242f">J1: passa 8.3 mm da face externa (direita) — furo de parede</text>
 </svg>

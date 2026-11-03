@@ -472,14 +472,39 @@ def build():
         for n, nt in (("1", "+3V3"), ("2", net), ("3", "AGND")):
             stub(sh, j, n, x + U(24), nt)
 
+    # O botao do painel NAO chega mais direto ao GP22: entre ele e o pino
+    # fica o filtro abaixo. A rede do lado do painel (botao + J7 + R9) e
+    # START_SW; o nome START continua sendo a rede do GP22.
     sw1 = sh.symbol("Switch:SW_Push", "SW1", "START", (U(124), U(70)),
                     on_board=False)
-    stub(sh, sw1, "1", U(124), "START")
+    stub(sh, sw1, "1", U(124), "START_SW")
     stub(sh, sw1, "2", U(124), "GND")
     j7 = sh.symbol("Connector_Generic:Conn_01x02", "J7", "START (painel)",
                    (U(140), U(70)), footprint=fp_hdr(2))
-    stub(sh, j7, "1", U(140), "START")
+    stub(sh, j7, "1", U(140), "START_SW")
     stub(sh, j7, "2", U(140), "GND")
+
+    # ------------------------------------------ filtro do SELETOR (placa)
+    # O pull-up interno do RP2040 (~60 kOhm) e fraco demais para um pino que
+    # sai da placa por 2 fios ate um painel de aluminio: uma fuga de 30 kOhm
+    # (fluxo, poeira umida, isolacao prensada) ja o deixa em 1,65 V, em cima
+    # do limiar, e o jogo le pressoes que ninguem deu. R8 em paralelo baixa a
+    # impedancia do no (a mesma fuga passa a dar 2,85 V), C5 integra os
+    # transitorios (~0,5 ms com R8) e R9 em serie limita a corrente de ESD
+    # que vem do painel. Ver docs/schematic.md, secao "Botao SELETOR".
+    sh.text("Filtro do SELETOR (na placa)", (U(112), U(80)), 2.0)
+    r9 = sh.symbol("Device:R", "R9", "220", (U(120), U(87)), 90,
+                   footprint=FP_R)
+    stub(sh, r9, "1", None, "START_SW")
+    stub(sh, r9, "2", None, "START")
+
+    r8 = sh.symbol("Device:R", "R8", "4k7", (U(134), U(87)), footprint=FP_R)
+    vstub(sh, r8, "1", "+3V3")
+    vstub(sh, r8, "2", "START")
+
+    c5 = sh.symbol("Device:C", "C5", "100n", (U(146), U(87)), footprint=FP_C)
+    vstub(sh, c5, "1", "START")
+    vstub(sh, c5, "2", "GND")
 
     # ------------------------------- chave A/B (painel) + RCAs (na placa)
     sh.text("Chave A/B (painel, via J4) e RCAs de audio (na placa)",

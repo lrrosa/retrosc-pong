@@ -155,6 +155,13 @@ def main():
         "R5": ("1", 36.0, 24.0, 0),         # LINHA -> GND (shunt)
         "R6": ("1", 36.0, 30.0, 0),         # AUD_C -> AMP_L
         "R7": ("1", 36.0, 36.0, 0),         # AUD_C -> AMP_R
+        # ---- filtro do SELETOR: R9 e C5 colados no J7, R8 onde couber ----
+        # R9 (serie) e C5 (shunt) tem que ficar NO conector: e ali que a
+        # descarga do painel entra na placa, e e ali que ela tem que morrer.
+        # R8 e so um pull-up DC - vale em qualquer ponto da rede START.
+        "R9": ("1", 29.5, 51.0, 0),         # J7 p1 -> GP22 (220R de ESD)
+        "C5": ("1", 34.5, 51.0, 0),         # GP22 -> GND (100n)
+        "R8": ("1", 46.0, 30.0, 0),         # GP22 -> +3V3 (pull-up 4k7)
         # ---- headers de painel na borda de baixo, em UMA fileira ----
         # (2 fileiras nao cabem: cada uma precisa de ~9 mm com os rotulos)
         # J5+J6 sao um bloco (10,16 mm entre eles = 1 vaga -> femea 1x7 unica)
@@ -444,10 +451,13 @@ def main():
     try:
         # assinatura na area vazia do meio da placa (x~32..56, y~40..54)
         titulo = "RetroSC Pong v1.0" + (" (roxo)" if VARIANT_YD else "")
-        for txt, ty, size in ((titulo, 45.0, 1.6), ("LRRosa 2026", 49.5, 1.1)):
+        # a 2a linha foi 4 mm para a direita: na posicao antiga ela passava
+        # por cima do pad do C5 (silk sobre cobre)
+        for txt, tx, ty, size in ((titulo, 44, 45.0, 1.6),
+                                  ("LRRosa 2026", 48, 49.5, 1.1)):
             t = pcbnew.PCB_TEXT(board)
             t.SetText(txt)
-            t.SetPosition(V(44, ty))
+            t.SetPosition(V(tx, ty))
             t.SetLayer(pcbnew.F_SilkS)
             t.SetTextSize(pcbnew.VECTOR2I(mm(size), mm(size)))
             t.SetTextThickness(mm(size / 6))

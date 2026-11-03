@@ -150,7 +150,7 @@ Resumo do hardware:
 | ----- | ---- | -------------------------------- |
 | Vídeo composto | GP16 (sync), GP17 (video) | R1 470 Ω + R2 270 Ω → jack J1 |
 | Áudio | GP18 (PWM) | filtro R3 + C1, acoplamento C2, divisor R4/R5, entradas R6/R7 → amp U2 → jacks J8/J9 |
-| Botão SELETOR | GP22 | SW1 (para GND) via header J7 |
+| Botão SELETOR | GP22 | SW1 (para GND) via header J7 + filtro R9/R8/C5 na placa |
 | Potenciômetro P1 | GP26 (ADC0) | RV1 10 kΩ linear + C3 → header J5 |
 | Potenciômetro P2 | GP27 (ADC1) | RV2 10 kΩ linear + C4 → header J6 |
 

@@ -1,43 +1,91 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 262" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13">
-  <rect x="0.5" y="0.5" width="559" height="261" rx="10" fill="#ffffff" stroke="#d0d7de"/>
-  <text x="20" y="30" font-size="14" font-weight="bold" fill="#16202a">Botão SELETOR — push-button NA (só 2 fios: GP22 e GND)</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 368" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13">
+  <rect x="0.5" y="0.5" width="719" height="367" rx="10" fill="#ffffff" stroke="#d0d7de"/>
+  <text x="20" y="30" font-size="14" font-weight="bold" fill="#16202a">Botão SELETOR — o painel dá 2 fios; o filtro fica na placa</text>
 
-  <!-- ===== interno ao RP2040 (pull-up) ===== -->
-  <rect x="162" y="60" width="96" height="64" rx="8" fill="#f6f8fa" stroke="#9aa7b3" stroke-dasharray="5 3"/>
-  <text x="210" y="74" text-anchor="middle" font-weight="bold" fill="#5b6b7a">+3V3</text>
+  <!-- ===== trilho +3V3 (alimenta o pull-up interno e o externo) ===== -->
+  <text x="250" y="62" text-anchor="middle" font-weight="bold" fill="#16202a">+3V3</text>
+  <line x1="200" y1="72" x2="300" y2="72" stroke="#16202a" stroke-width="2"/>
+
+  <!-- ===== pull-up interno ao RP2040 (não se monta) ===== -->
   <g stroke="#9aa7b3" stroke-width="2" fill="none" stroke-dasharray="5 3">
-    <line x1="210" y1="80" x2="210" y2="90"/>
-    <line x1="210" y1="112" x2="210" y2="140"/>
+    <line x1="200" y1="72" x2="200" y2="104"/>
+    <line x1="200" y1="130" x2="200" y2="200"/>
   </g>
-  <rect x="186" y="90" width="48" height="22" rx="3" fill="#ffffff" stroke="#9aa7b3" stroke-dasharray="5 3"/>
-  <text x="210" y="106" text-anchor="middle" font-size="11" fill="#5b6b7a">≈60 kΩ</text>
-  <text x="268" y="92" fill="#5b6b7a" font-size="11">interno ao RP2040</text>
-  <text x="268" y="108" fill="#5b6b7a" font-size="11">(pull-up — não fiar)</text>
+  <rect x="176" y="104" width="48" height="26" rx="3" fill="#ffffff" stroke="#9aa7b3" stroke-dasharray="5 3"/>
+  <text x="200" y="122" text-anchor="middle" font-size="11" fill="#5b6b7a">≈60 kΩ</text>
+  <text x="166" y="112" text-anchor="end" font-size="11" fill="#5b6b7a">interno ao RP2040</text>
+  <text x="166" y="128" text-anchor="end" font-size="11" fill="#5b6b7a">(pull-up — não se monta)</text>
+  <circle cx="200" cy="200" r="3.5" fill="#9aa7b3"/>
 
-  <!-- ===== fiação real (GP22 -> botão -> GND) ===== -->
-  <rect x="16" y="125" width="120" height="30" rx="5" fill="#eef4ff" stroke="#16202a"/>
-  <text x="76" y="144" text-anchor="middle" fill="#16202a">GP22 · SELETOR</text>
-
+  <!-- ===== R8: pull-up externo ===== -->
   <g stroke="#16202a" stroke-width="2" fill="none">
-    <line x1="136" y1="140" x2="238" y2="140"/>
-    <line x1="310" y1="140" x2="388" y2="140"/>
-    <line x1="388" y1="140" x2="388" y2="184"/>
+    <line x1="300" y1="72" x2="300" y2="104"/>
+    <line x1="300" y1="130" x2="300" y2="200"/>
   </g>
-  <circle cx="210" cy="140" r="3.5" fill="#9aa7b3"/>
+  <rect x="276" y="104" width="48" height="26" rx="3" fill="#ffffff" stroke="#16202a"/>
+  <text x="300" y="122" text-anchor="middle" font-size="11" fill="#16202a">4k7</text>
+  <text x="334" y="113" font-size="12" font-weight="bold" fill="#16202a">R8</text>
+  <text x="334" y="129" font-size="11" fill="#5b6b7a">pull-up</text>
+  <circle cx="300" cy="200" r="3.5" fill="#16202a"/>
 
-  <!-- switch (open) -->
-  <circle cx="238" cy="140" r="3.5" fill="#ffffff" stroke="#16202a"/>
-  <circle cx="310" cy="140" r="3.5" fill="#ffffff" stroke="#16202a"/>
-  <line x1="238" y1="140" x2="304" y2="121" stroke="#16202a" stroke-width="2"/>
-  <text x="274" y="174" text-anchor="middle" font-size="11" fill="#5b6b7a">botão (NA)</text>
+  <!-- ===== nó do GP22 ===== -->
+  <rect x="16" y="185" width="120" height="30" rx="5" fill="#eef4ff" stroke="#16202a"/>
+  <text x="76" y="204" text-anchor="middle" fill="#16202a">GP22 · SELETOR</text>
+  <line x1="136" y1="200" x2="420" y2="200" stroke="#16202a" stroke-width="2"/>
 
-  <!-- GND -->
+  <!-- ===== C5: 100 nF para o terra ===== -->
+  <g stroke="#16202a" stroke-width="2" fill="none">
+    <line x1="370" y1="200" x2="370" y2="232"/>
+    <line x1="352" y1="232" x2="388" y2="232"/>
+    <line x1="352" y1="244" x2="388" y2="244"/>
+    <line x1="370" y1="244" x2="370" y2="290"/>
+  </g>
+  <circle cx="370" cy="200" r="3.5" fill="#16202a"/>
+  <text x="396" y="234" font-size="12" font-weight="bold" fill="#16202a">C5</text>
+  <text x="396" y="250" font-size="11" fill="#5b6b7a">100n</text>
+
+  <!-- ===== R9: 220 Ω em série (ESD do painel) ===== -->
+  <rect x="420" y="186" width="60" height="28" rx="3" fill="#ffffff" stroke="#16202a"/>
+  <text x="450" y="205" text-anchor="middle" font-size="12" fill="#16202a">220</text>
+  <text x="450" y="177" text-anchor="middle" font-size="12" font-weight="bold" fill="#16202a">R9</text>
+  <line x1="480" y1="200" x2="520" y2="200" stroke="#16202a" stroke-width="2"/>
+
+  <!-- ===== header J7 (2 vias) ===== -->
+  <rect x="536" y="180" width="44" height="84" rx="4" fill="#f6f8fa" stroke="#16202a"/>
+  <rect x="520" y="192" width="16" height="16" fill="#ffffff" stroke="#16202a"/>
+  <rect x="520" y="236" width="16" height="16" fill="#ffffff" stroke="#16202a"/>
+  <text x="558" y="200" text-anchor="middle" font-size="11" fill="#5b6b7a">p1</text>
+  <text x="558" y="248" text-anchor="middle" font-size="11" fill="#5b6b7a">p2</text>
+  <text x="558" y="280" text-anchor="middle" font-size="12" font-weight="bold" fill="#16202a">J7</text>
+
+  <!-- p2 do J7 -> terra da placa -->
+  <g stroke="#16202a" stroke-width="2" fill="none">
+    <line x1="520" y1="244" x2="480" y2="244"/>
+    <line x1="480" y1="244" x2="480" y2="290"/>
+    <line x1="370" y1="290" x2="480" y2="290"/>
+  </g>
+
+  <!-- símbolo de GND -->
   <g stroke="#16202a" stroke-width="2">
-    <line x1="376" y1="184" x2="400" y2="184"/>
-    <line x1="380" y1="189" x2="396" y2="189"/>
-    <line x1="384" y1="194" x2="392" y2="194"/>
+    <line x1="425" y1="290" x2="425" y2="298"/>
+    <line x1="409" y1="298" x2="441" y2="298"/>
+    <line x1="414" y1="304" x2="436" y2="304"/>
+    <line x1="419" y1="310" x2="431" y2="310"/>
   </g>
 
-  <text x="280" y="224" text-anchor="middle" fill="#5b6b7a" font-size="12">Aberto: GP22 = 3,3 V (pull-up interno)  ·  Pressionado: GP22 = GND (flanco de descida)</text>
-  <text x="280" y="244" text-anchor="middle" fill="#5b6b7a" font-size="12">Drena só ~55 µA: o GND pode ser o mesmo fio do vídeo (não precisa de fio próprio).</text>
+  <!-- ===== painel: os 2 fios e o botão ===== -->
+  <rect x="596" y="166" width="104" height="112" rx="8" fill="none" stroke="#9aa7b3" stroke-dasharray="5 3"/>
+  <text x="648" y="158" text-anchor="middle" font-size="11" fill="#5b6b7a">painel (2 fios)</text>
+  <g stroke="#16202a" stroke-width="2" fill="none">
+    <line x1="580" y1="200" x2="648" y2="200"/>
+    <line x1="580" y1="244" x2="648" y2="244"/>
+  </g>
+  <circle cx="648" cy="200" r="3.5" fill="#ffffff" stroke="#16202a"/>
+  <circle cx="648" cy="244" r="3.5" fill="#ffffff" stroke="#16202a"/>
+  <line x1="648" y1="244" x2="676" y2="206" stroke="#16202a" stroke-width="2"/>
+  <text x="648" y="268" text-anchor="middle" font-size="11" fill="#5b6b7a">botão (NA)</text>
+
+  <!-- ===== notas ===== -->
+  <text x="360" y="334" text-anchor="middle" fill="#5b6b7a" font-size="12">Aberto: GP22 ≈ 3,3 V (R8 em paralelo com o pull-up interno)  ·  Pressionado: GP22 = GND (flanco de descida)</text>
+  <text x="360" y="352" text-anchor="middle" fill="#5b6b7a" font-size="12">R9 segura a corrente de ESD que vem do painel; C5 com R8 dá ~0,5 ms de constante de tempo.</text>
 </svg>

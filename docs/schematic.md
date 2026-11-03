@@ -295,17 +295,44 @@ cada **coluna é um polo** e a **fileira do meio (5–8) são os comuns**):
 
 ## Botão SELETOR
 
-![Botão SELETOR ligado ao GP22](images/sch_button.svg)
+![Botão SELETOR ligado ao GP22, com o filtro R8/R9/C5 da placa](images/sch_button.svg)
 
-Push-button momentâneo. **Só precisa de 2 fios: GP22 e GND** — o botão **não**
-recebe 3,3 V. Quando aberto, GP22 fica em 3,3 V via **pull-up interno** ao
-RP2040 (habilitado por software com `gpio_pull_up()`); quando pressionado, GP22
-vai a GND e o firmware detecta o flanco de descida.
+Push-button momentâneo. **Do painel saem só 2 fios: botão e GND**, que chegam
+ao header **J7** — o botão **não** recebe 3,3 V. Quando aberto, GP22 fica em
+3,3 V; quando pressionado, vai a GND e o firmware detecta o flanco de descida.
+
+Entre o J7 e o GP22, porém, **a placa tem um filtro de três componentes**:
+
+| Ref | Valor | Onde | O que faz |
+| --- | ----- | ---- | --------- |
+| **R9** | 220 Ω | em série, J7 p1 → GP22 | limita a corrente de ESD que vem do painel de alumínio |
+| **R8** | 4,7 kΩ | GP22 → 3V3 | pull-up externo, em paralelo com o interno (~60 kΩ) |
+| **C5** | 100 nF | GP22 → GND, junto ao J7 | integra transitórios e o repique do contato |
+
+**Por que o pull-up interno não basta.** O RP2040 tem pull-up interno (ligado
+por software com `gpio_pull_up()`), e em bancada ele resolve. Num gabinete ele
+é fraco demais: a ~60 kΩ, uma fuga de 30 kΩ entre o pino e o terra — resíduo
+de fluxo de solda, poeira com umidade nos terminais, a isolação do cabo
+prensada pelo painel — forma um divisor que para em **1,65 V**, exatamente em
+cima do limiar de entrada (~1,6 V), e o jogo passa a ler pressões que ninguém
+deu. Com o R8 de 4,7 kΩ em paralelo o nó fica em ~4,4 kΩ, e a **mesma** fuga
+de 30 kΩ só consegue baixar o pino para **2,85 V** — longe do limiar.
+
+**O que cada um custa.** O R8 puxa 0,7 mA enquanto o botão está pressionado
+(contra 55 µA do pull-up interno sozinho): ainda é nada perto dos ~13 mA do
+DAC de vídeo, e só flui enquanto alguém segura o botão. O C5 com o R8 dá uma
+constante de tempo de ~0,5 ms na subida e ~22 µs na descida (pelo R9) —
+imperceptível para um dedo humano, mas suficiente para o repique do contato e
+para os picos acoplados pelo cabo chegarem ao pino já alisados.
 
 O **GND do botão pode ser compartilhado** — por exemplo, o mesmo fio que vai
 até o shield do RCA de vídeo. Ele drena microamperes (ver
 [Aterramento em estrela](#alimentação)), ao contrário do retorno do amp, que
 precisa de fio próprio. Na PCB a questão nem se coloca: o GND é um plano.
+
+> **Na placa**, R9 e C5 ficam **colados no J7** de propósito: é no conector que
+> a descarga do painel entra, e é ali que ela tem que morrer, antes de percorrer
+> a placa até o módulo. O R8 é só um pull-up DC — fica onde couber.
 
 ### Se o SELETOR "se pressiona sozinho"
 
@@ -314,23 +341,27 @@ maioria, 3 frames confirmando a mudança e 6 frames de carência depois de cada
 borda aceita — ver `input.c`). Isso cobre o ruído do próprio sinal composto e do
 PWM do áudio, que é o caso que uma leitura única por frame tomava por pressão.
 
-O que o firmware **não** cobre é o pino viver perto do limiar. Pendurado só no
-pull-up interno de **~60 kΩ**, uma fuga de 30 kΩ para GND — resíduo de fluxo de
-solda, poeira com umidade nos terminais, isolação do cabo prensada pelo painel —
-já o deixa em 1,65 V, em cima do limiar, e o botão continua passando em qualquer
-teste de continuidade. Se as pressões fantasma persistirem:
+O que o firmware **não** cobre é o pino viver perto do limiar — é para isso que
+existem o R8, o R9 e o C5 descritos acima. **Numa placa do repositório eles já
+estão lá**; o roteiro abaixo é para quem montou em **perfboard ou fiação
+manual**, ou para quando o sintoma aparece mesmo com o filtro montado.
 
-1. **Desligue o cabo do J7** e deixe o GP22 só no pull-up interno, com o jogo
+1. **Desligue o cabo do J7** e deixe o GP22 só com o filtro da placa, com o jogo
    rodando. Se continuar, o ruído entra na placa; se parar, é o cabo, o botão ou
    a fiação do painel.
-2. Acrescente, do lado da placa, **4,7 kΩ de GP22 para 3V3** e **100 nF de GP22
-   para GND**. O pull-up externo põe a mesma fuga de 30 kΩ em 2,85 V, e o
-   capacitor dá ~0,5 ms de constante de tempo. Um **220 Ω em série** com o pino
-   limita a corrente de ESD que vem do painel.
-3. Use **par trançado**: GP22 com o seu próprio fio de GND, passando longe da
-   saída do amplificador e do cabo de vídeo.
+2. **Monte o filtro, se ele não existir.** Em perfboard, solde os três
+   componentes junto do conector do botão: **4,7 kΩ de GP22 para 3V3** (R8),
+   **100 nF de GP22 para GND** (C5) e **220 Ω em série** entre o fio do painel e
+   o pino (R9). Confira também se os três estão soldados de fato na PCB — é fácil
+   pular um resistor que não parece fazer nada.
+3. Use **par trançado**: o fio do botão com o seu próprio fio de GND, passando
+   longe da saída do amplificador e do cabo de vídeo.
 4. **Aterre a chapa de alumínio** ao GND do circuito. Em tempo seco, a descarga
-   de quem encosta no painel acopla direto no fio do botão.
+   de quem encosta no painel acopla direto no fio do botão — o R9 segura a
+   corrente, mas não substitui aterrar a chapa.
+5. **Procure a fuga.** Com o cabo desligado e a placa sem alimentação, meça a
+   resistência entre o pino do J7 e o GND: qualquer coisa abaixo de ~1 MΩ é
+   resíduo de fluxo ou sujeira. Álcool isopropílico e escova resolvem.
 
 ## Alimentação
 
@@ -350,9 +381,9 @@ teste de continuidade. Se as pressões fantasma persistirem:
   - retorno do áudio de linha (shield dos RCAs no modo A) → junto do
     bloco de áudio, **p38**;
   - botão SELETOR → **qualquer GND, inclusive o mesmo fio do vídeo**. É a
-    exceção: com o pull-up interno (~60 kΩ) ele drena só **~55 µA** e apenas
-    enquanto pressionado — mais de 200× menos que o retorno do vídeo
-    (~13 mA) e uns 5000× menos que os picos do amp, ou seja, não move o
+    exceção: mesmo com o pull-up externo de 4,7 kΩ (R8) ele drena **~0,75 mA**,
+    e apenas enquanto pressionado — ainda 17× menos que o retorno do vídeo
+    (~13 mA) e uns 400× menos que os picos do amp, ou seja, não move o
     terra de ninguém. E, como entrada digital, tem mais de 1 V de margem
     até o limiar (~1,6 V), então também não se incomoda com o vídeo.
 
